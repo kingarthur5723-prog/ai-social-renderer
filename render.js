@@ -21,7 +21,19 @@ async function renderVideo(data) {
     const id = uuid();
 
 const downloadedImages = await downloadImages(images);
+const outputFolder = path.join(__dirname, "output");
 
+await fs.ensureDir(outputFolder);
+
+const videoFile = path.join(
+    outputFolder,
+    `${id}.mp4`
+);
+
+await createVideo(
+    downloadedImages,
+    videoFile
+);
 console.log(downloadedImages);
 
     // Placeholder until FFmpeg is connected
