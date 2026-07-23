@@ -1,1 +1,4 @@
-coming soon
+node_modules
+output/*
+uploads/*
+.env
