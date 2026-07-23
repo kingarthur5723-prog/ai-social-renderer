@@ -2,7 +2,10 @@ const fs = require("fs-extra");
 const path = require("path");
 const { v4: uuid } = require("uuid");
 
-const { downloadImages } = require("./ffmpeg");
+const {
+    downloadImages,
+    createVideo
+} = require("./ffmpeg");
 
 async function renderVideo(data) {
 
