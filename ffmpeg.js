@@ -70,12 +70,24 @@ async function createVideo(images, outputFile) {
 
         console.log(cmd);
 
-        exec(cmd, (err) => {
+        exec(cmd, (err, stdout, stderr) => {
 
-            if (err) reject(err);
-            else resolve(outputFile);
+    if (err) {
 
-        });
+        console.error(stderr);
+
+        reject(
+            new Error(
+                stderr.split("\n").slice(-20).join("\n")
+            )
+        );
+
+        return;
+    }
+
+    resolve(outputFile);
+
+});
 
     });
 
