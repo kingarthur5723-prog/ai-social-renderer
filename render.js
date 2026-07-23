@@ -51,4 +51,7 @@ async function renderVideo(data) {
 
 }
 
-module.exports = renderVideo;
+module.exports = {
+    downloadImages,
+    createVideo
+};
