@@ -1,7 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs-extra");
-const path = require("path");
+const path = require("path");app.use(
+    "/output",
+    express.static(
+        path.join(__dirname, "output")
+    )
+);
 
 const renderVideo = require("./render");
 
