@@ -14,47 +14,41 @@ async function renderVideo(data) {
     const music = data.music || "";
     const voice = data.voice || "";
 
-    if (images.length === 0) {
+    if (!Array.isArray(images) || images.length === 0) {
         throw new Error("No images supplied.");
     }
 
+    // Create unique job ID
     const id = uuid();
 
-const downloadedImages = await downloadImages(images);
-const outputFolder = path.join(__dirname, "output");
+    // Ensure output folder exists
+    const outputFolder = path.join(__dirname, "output");
+    await fs.ensureDir(outputFolder);
 
-await fs.ensureDir(outputFolder);
+    // Download all images
+    console.log("Downloading images...");
+    const downloadedImages = await downloadImages(images);
 
-const videoFile = path.join(
-    outputFolder,
-    `${id}.mp4`
-);
+    console.log(downloadedImages);
 
-await createVideo(
-    downloadedImages,
-    videoFile
-);
-console.log(downloadedImages);
+    // Output MP4 path
+    const videoFile = path.join(outputFolder, `${id}.mp4`);
 
-    // Placeholder until FFmpeg is connected
-    const outputFile = path.join(__dirname, "output", `${id}.json`);
+    // Create slideshow video
+    console.log("Rendering video...");
+    await createVideo(downloadedImages, videoFile);
 
-    await fs.writeJson(outputFile, {
-        id,
-        images,
-        captions,
-        music,
-        voice,
-        created: new Date().toISOString()
-    }, { spaces: 2 });
+    console.log("Video created:", videoFile);
 
     return {
         success: true,
-        message: "Render request received.",
         jobId: id,
-        next: "FFmpeg rendering will be added next.",
-        debugFile: `/videos/${id}.json`
+        video: `/output/${id}.mp4`,
+        captions: captions.length,
+        music: music,
+        voice: voice
     };
+
 }
 
 module.exports = renderVideo;
