@@ -21,38 +21,34 @@ async function renderVideo(data) {
     // Create unique job ID
     const id = uuid();
 
-    // Ensure output folder exists
-    const outputFolder = path.join(__dirname, "output");
-    await fs.ensureDir(outputFolder);
+    // Ensure output directory exists
+    const outputDir = path.join(__dirname, "output");
+    await fs.ensureDir(outputDir);
 
-    // Download all images
+    // Download images
     console.log("Downloading images...");
     const downloadedImages = await downloadImages(images);
 
-    console.log(downloadedImages);
+    console.log("Downloaded:", downloadedImages);
 
-    // Output MP4 path
-    const videoFile = path.join(outputFolder, `${id}.mp4`);
+    // Output video path
+    const outputVideo = path.join(outputDir, `${id}.mp4`);
 
-    // Create slideshow video
+    // Build slideshow
     console.log("Rendering video...");
-    await createVideo(downloadedImages, videoFile);
+    await createVideo(downloadedImages, outputVideo);
 
-    console.log("Video created:", videoFile);
+    console.log("Render completed.");
 
     return {
         success: true,
         jobId: id,
         video: `/output/${id}.mp4`,
-        captions: captions.length,
-        music: music,
-        voice: voice
+        captions,
+        music,
+        voice
     };
 
 }
 
-module.exports = {
-    downloadImages,
-    createVideo
-};
 module.exports = renderVideo;
