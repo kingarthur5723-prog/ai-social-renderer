@@ -1,52 +1,10 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
-const { exec } = require("child_process");
-
-async function downloadImages(images) {
-
-    const uploadDir = path.join(__dirname, "uploads");
-
-    await fs.ensureDir(uploadDir);
-
-    const files = [];
-
-    for (let i = 0; i < images.length; i++) {
-
-        const filename = path.join(uploadDir, `scene${i}.jpg`);
-
-        const response = await axios({
-            url: images[i],
-            method: "GET",
-            responseType: "stream"
-        });
-
-        await new Promise((resolve, reject) => {
-
-            const writer = fs.createWriteStream(filename);
-
-            response.data.pipe(writer);
-
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-
-        });
-
-        files.push(filename);
-
-    }
-
-    return files;
-
-}
-
 async function createVideo({
     images,
     captions,
     music,
     narration,
     outputFile
-})
+}) {
 
     const listFile = path.join(__dirname, "uploads", "list.txt");
 
@@ -57,6 +15,7 @@ async function createVideo({
         text += "duration 3\n";
     });
 
+    // Repeat the last image
     text += `file '${images[images.length - 1]}'\n`;
 
     await fs.writeFile(listFile, text);
@@ -70,7 +29,7 @@ async function createVideo({
             "-safe", "0",
             "-i", `"${listFile}"`,
             "-vf",
-`"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.0008,1.15)':d=72:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280"`,
+            `"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.0008,1.15)':d=72:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280"`,
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-crf", "30",
@@ -99,8 +58,3 @@ async function createVideo({
     });
 
 }
-
-module.exports = {
-    downloadImages,
-    createVideo
-};
