@@ -40,7 +40,13 @@ async function downloadImages(images) {
 
 }
 
-async function createVideo(images, outputFile) {
+async function createVideo({
+    images,
+    captions,
+    music,
+    narration,
+    outputFile
+})
 
     const listFile = path.join(__dirname, "uploads", "list.txt");
 
