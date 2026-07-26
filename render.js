@@ -36,7 +36,13 @@ async function renderVideo(data) {
 
     // Build slideshow
     console.log("Rendering video...");
-    await createVideo(downloadedImages, outputVideo);
+    await createVideo({
+    images: downloadedImages,
+    captions,
+    music,
+    narration: voice,
+    outputFile: outputVideo
+});
 
     console.log("Render completed.");
 
