@@ -80,25 +80,13 @@ async function createVideo({
     "-i", `"${listFile}"`,
 
     "-vf",
-`"scale=1080:1920:force_original_aspect_ratio=increase,
-crop=1080:1920,
-zoompan=
-z='min(zoom+0.00035,1.08)':
-x='iw/2-(iw/zoom/2)':
-y='ih/2-(ih/zoom/2)':
-d=150:
-s=1080x1920:
-fps=30"`,
+`"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.00025,1.06)':d=120:s=720x1280:fps=24"`,
 
     "-c:v","libx264",
 
-    "-preset","medium",
+    "-preset","veryfast",
 
-    "-crf","20",
-
-    "-profile:v","high",
-
-    "-level","4.1",
+    "-crf","23",
 
     "-pix_fmt","yuv420p",
 
