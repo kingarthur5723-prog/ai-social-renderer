@@ -72,20 +72,40 @@ async function createVideo({
     return new Promise((resolve, reject) => {
 
         const cmd = [
-            "ffmpeg",
-            "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", `"${listFile}"`,
-            "-vf",
-            `"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.0008,1.15)':d=72:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280"`,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "30",
-            "-pix_fmt", "yuv420p",
-            "-r", "24",
-            `"${outputFile}"`
-        ].join(" ");
+    "ffmpeg",
+    "-y",
+
+    "-f", "concat",
+    "-safe", "0",
+    "-i", `"${listFile}"`,
+
+    "-vf",
+`"scale=1080:1920:force_original_aspect_ratio=increase,
+crop=1080:1920,
+zoompan=
+z='min(zoom+0.00035,1.08)':
+x='iw/2-(iw/zoom/2)':
+y='ih/2-(ih/zoom/2)':
+d=150:
+s=1080x1920:
+fps=30"`,
+
+    "-c:v","libx264",
+
+    "-preset","medium",
+
+    "-crf","20",
+
+    "-profile:v","high",
+
+    "-level","4.1",
+
+    "-pix_fmt","yuv420p",
+
+    "-movflags","+faststart",
+
+    `"${outputFile}"`
+].join(" ");
 
         console.log(cmd);
 
