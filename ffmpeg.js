@@ -121,6 +121,13 @@ async function createVideo({
 // ======================================
 
 module.exports = {
+
     downloadImages,
-    createVideo
+
+    createScene,
+
+    mergeScenes,
+
+    cleanup
+
 };
