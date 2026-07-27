@@ -61,7 +61,7 @@ async function createVideo({
 
     images.forEach((img) => {
         text += `file '${img}'\n`;
-        text += "duration 5\n";
+        text += "duration 4\n";
     });
 
     // Repeat last image
