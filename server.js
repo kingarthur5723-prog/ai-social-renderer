@@ -13,6 +13,7 @@ app.use(express.json({ limit: "50mb" }));
 
 // Ensure folders exist
 fs.ensureDirSync(path.join(__dirname, "uploads"));
+fs.ensureDirSync(path.join(__dirname,"temp"));
 fs.ensureDirSync(path.join(__dirname, "output"));
 fs.ensureDirSync(path.join(__dirname, "assets"));
 
