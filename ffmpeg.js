@@ -55,7 +55,8 @@ async function createVideo({
     outputFile
 }) {
 
-    const listFile = path.join(__dirname, "uploads", "list.txt");
+    const uploadDir = path.join(__dirname, "uploads");
+    const listFile = path.join(uploadDir, "list.txt");
 
     let text = "";
 
@@ -64,7 +65,6 @@ async function createVideo({
         text += "duration 4\n";
     });
 
-    // Repeat last image
     text += `file '${images[images.length - 1]}'\n`;
 
     await fs.writeFile(listFile, text);
@@ -72,28 +72,33 @@ async function createVideo({
     return new Promise((resolve, reject) => {
 
         const cmd = [
-    "ffmpeg",
-    "-y",
+            "ffmpeg",
+            "-y",
 
-    "-f", "concat",
-    "-safe", "0",
-    "-i", `"${listFile}"`,
+            "-f","concat",
+            "-safe","0",
+            "-i", `"${listFile}"`,
 
-    "-vf",
-`"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.00025,1.06)':d=120:s=720x1280:fps=24"`,
+            "-vf",
+`"scale=720:1280:force_original_aspect_ratio=increase,
+crop=720:1280,
+zoompan=
+z='min(zoom+0.00015,1.04)':
+x='iw/2-(iw/zoom/2)':
+y='ih/2-(ih/zoom/2)':
+d=96:
+s=720x1280:
+fps=24"`,
 
-    "-c:v","libx264",
+            "-c:v","libx264",
+            "-preset","veryfast",
+            "-crf","22",
+            "-pix_fmt","yuv420p",
+            "-movflags","+faststart",
 
-    "-preset","veryfast",
+            `"${outputFile}"`
 
-    "-crf","23",
-
-    "-pix_fmt","yuv420p",
-
-    "-movflags","+faststart",
-
-    `"${outputFile}"`
-].join(" ");
+        ].join(" ");
 
         console.log(cmd);
 
@@ -104,10 +109,10 @@ async function createVideo({
 
         child.on("close", code => {
 
-            if (code === 0) {
+            if(code===0){
                 resolve(outputFile);
-            } else {
-                reject(new Error("FFmpeg exited with code " + code));
+            }else{
+                reject(new Error("FFmpeg exited with code "+code));
             }
 
         });
@@ -115,7 +120,6 @@ async function createVideo({
     });
 
 }
-
 // ======================================
 // EXPORTS
 // ======================================
