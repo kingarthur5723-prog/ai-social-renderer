@@ -124,10 +124,6 @@ module.exports = {
 
     downloadImages,
 
-    createScene,
-
-    mergeScenes,
-
-    cleanup
+    createVideo
 
 };
