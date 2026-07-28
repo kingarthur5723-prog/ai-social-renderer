@@ -62,7 +62,7 @@ async function createVideo({
 
     images.forEach((img) => {
         text += `file '${img}'\n`;
-        text += "duration 4\n";
+        text += "duration 5\n";
     });
 
     text += `file '${images[images.length - 1]}'\n`;
@@ -83,7 +83,7 @@ async function createVideo({
 `"scale=720:1280:force_original_aspect_ratio=increase,
 crop=720:1280,
 zoompan=
-z='min(zoom+0.00015,1.04)':
+z='min(zoom+0.00010,1.03)':
 x='iw/2-(iw/zoom/2)':
 y='ih/2-(ih/zoom/2)':
 d=96:
