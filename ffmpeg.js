@@ -57,7 +57,7 @@ async function createVideo({
 
     const uploadDir = path.join(__dirname, "uploads");
     const listFile = path.join(uploadDir, "list.txt");
-    // =========================
+// =========================
 // DEBUG CAPTIONS
 // =========================
 
