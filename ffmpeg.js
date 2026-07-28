@@ -57,6 +57,19 @@ async function createVideo({
 
     const uploadDir = path.join(__dirname, "uploads");
     const listFile = path.join(uploadDir, "list.txt");
+    // =========================
+// DEBUG CAPTIONS
+// =========================
+
+console.log("================================");
+console.log("CAPTIONS RECEIVED");
+console.log("================================");
+
+captions.forEach((caption, index) => {
+    console.log(`Scene ${index + 1}: ${caption}`);
+});
+
+console.log("================================");
     const subtitleText = captions
     .map((c, i) => `${i + 1}. ${c}`)
     .join("\n");
