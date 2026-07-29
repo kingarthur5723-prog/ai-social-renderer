@@ -57,6 +57,32 @@ async function createVideo({
 
     const uploadDir = path.join(__dirname, "uploads");
     const listFile = path.join(uploadDir, "list.txt");
+    const subtitleFile = path.join(uploadDir, "captions.srt");
+
+let srt = "";
+
+captions.forEach((caption, index) => {
+
+    const start = index * 5;
+    const end = (index + 1) * 5;
+
+    const formatTime = (seconds) => {
+
+        const hh = String(Math.floor(seconds / 3600)).padStart(2, "0");
+        const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+        const ss = String(seconds % 60).padStart(2, "0");
+
+        return `${hh}:${mm}:${ss},000`;
+
+    };
+
+    srt += `${index + 1}\n`;
+    srt += `${formatTime(start)} --> ${formatTime(end)}\n`;
+    srt += `${caption}\n\n`;
+
+});
+
+await fs.writeFile(subtitleFile, srt);
 // =========================
 // DEBUG CAPTIONS
 // =========================
