@@ -65,7 +65,8 @@ async function createVideo({
     captions,
     music,
     narration,
-    outputFile
+    outputFile,
+    duration = 5
 }) {
 
     const uploadDir = path.join(__dirname, "uploads");
