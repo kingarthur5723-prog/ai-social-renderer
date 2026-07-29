@@ -132,7 +132,8 @@ x='iw/2-(iw/zoom/2)':
 y='ih/2-(ih/zoom/2)':
 d=96:
 s=720x1280:
-fps=24"`,
+fps=24,
+subtitles='${subtitleFile.replace(/\\/g, "/")}'"`,
 
             "-c:v","libx264",
             "-preset","veryfast",
