@@ -7,87 +7,233 @@ const {
     createVideo
 } = require("./ffmpeg");
 
+
+const outputDir = path.join(__dirname, "output");
+
+
+// ======================================
+// RENDER VIDEO
+// ======================================
+
 async function renderVideo(data) {
 
-    const images = data.images || [];
-    const captions = data.captions || [];
-    const music = data.music || "";
-    const voice = data.voice || "";
+    try {
 
-    if (!Array.isArray(images) || images.length === 0) {
-        throw new Error("No images supplied.");
+        const images = data.images || [];
+        const captions = data.captions || [];
+        const music = data.music || "";
+        const voice = data.voice || "";
+
+        const durationPerScene = data.duration || 5;
+
+
+        if (!Array.isArray(images) || images.length === 0) {
+
+            throw new Error("No images supplied.");
+
+        }
+
+
+        // Create unique job ID
+
+        const id = uuid();
+
+
+        // Ensure output exists
+
+        await fs.ensureDir(outputDir);
+
+
+
+        console.log("Downloading images...");
+
+        const downloadedImages =
+            await downloadImages(images);
+
+
+        console.log(
+            "Downloaded:",
+            downloadedImages
+        );
+
+
+        const outputVideo =
+            path.join(
+                outputDir,
+                `${id}.mp4`
+            );
+
+
+
+        console.log("Rendering video...");
+
+
+        await createVideo({
+
+            images: downloadedImages,
+
+            captions,
+
+            music,
+
+            narration: voice,
+
+            outputFile: outputVideo,
+
+            duration: durationPerScene
+
+        });
+
+
+
+        // Remove temporary files
+
+        for (const file of downloadedImages) {
+
+            await fs.remove(file);
+
+        }
+
+
+        console.log(
+            "Temporary images cleaned."
+        );
+
+
+
+        const totalDuration =
+            images.length * durationPerScene;
+
+
+
+        console.log(
+            "Render completed."
+        );
+
+
+        return {
+
+            success:true,
+
+            jobId:id,
+
+            video:`/output/${id}.mp4`,
+
+            captions,
+
+            music,
+
+            voice,
+
+            duration:`${totalDuration} seconds`,
+
+            platforms:[
+
+                "facebook",
+                "instagram",
+                "tiktok"
+
+            ],
+
+            status:"ready"
+
+        };
+
+
+    } catch(error) {
+
+
+        console.error(
+            "Render failed:",
+            error
+        );
+
+
+        return {
+
+            success:false,
+
+            error:error.message
+
+        };
+
     }
 
-    // Create unique job ID
-    const id = uuid();
-
-    // Ensure output directory exists
-    const outputDir = path.join(__dirname, "output");
-    await fs.ensureDir(outputDir);
-
-    // Download images
-    console.log("Downloading images...");
-    const downloadedImages = await downloadImages(images);
-
-    console.log("Downloaded:", downloadedImages);
-
-    // Output video path
-    const outputVideo = path.join(outputDir, `${id}.mp4`);
-
-    // Build slideshow
-    console.log("Rendering video...");
-    await createVideo({
-    images: downloadedImages,
-    captions,
-    music,
-    narration: voice,
-    outputFile: outputVideo
-});
-
-// Remove temporary images
-for (const file of downloadedImages) {
-    await fs.remove(file);
 }
 
-console.log("Temporary files cleaned.");
 
-    console.log("Render completed.");
 
-    return {
-        success: true,
-        jobId: id,
-        video: `/output/${id}.mp4`,
-        captions,
-        music,
-        voice,
-        duration:"59 seconds",
- platform:[
-    "facebook",
-    "instagram",
-    "tiktok"
- ],
- status:"ready"
-    };
+// ======================================
+// DELETE OLD VIDEOS
+// Runs every hour
+// ======================================
 
-}
 setInterval(async()=>{
 
-const files = await fs.readdir(outputDir);
 
-for(const file of files){
-
-const full =
-path.join(outputDir,file);
-
-const age =
-Date.now() - (await fs.stat(full)).mtimeMs;
+    try {
 
 
-if(age > 86400000){
-await fs.remove(full);
-}
+        await fs.ensureDir(outputDir);
 
-}
+
+        const files =
+            await fs.readdir(outputDir);
+
+
+
+        for(const file of files){
+
+
+            const full =
+                path.join(
+                    outputDir,
+                    file
+                );
+
+
+            const stats =
+                await fs.stat(full);
+
+
+
+            const age =
+                Date.now()
+                -
+                stats.mtimeMs;
+
+
+
+            // Delete videos older than 24 hours
+
+            if(age > 86400000){
+
+                await fs.remove(full);
+
+                console.log(
+                    "Deleted old video:",
+                    file
+                );
+
+            }
+
+        }
+
+
+    } catch(error){
+
+
+        console.error(
+            "Cleanup error:",
+            error.message
+        );
+
+
+    }
+
 
 },3600000);
+
+
+
 module.exports = renderVideo;
