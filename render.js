@@ -44,6 +44,13 @@ async function renderVideo(data) {
     outputFile: outputVideo
 });
 
+// Remove temporary images
+for (const file of downloadedImages) {
+    await fs.remove(file);
+}
+
+console.log("Temporary files cleaned.");
+
     console.log("Render completed.");
 
     return {
