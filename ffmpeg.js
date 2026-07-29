@@ -7,16 +7,31 @@ const { exec } = require("child_process");
 // DOWNLOAD IMAGES
 // ======================================
 
+// ======================================
+// DOWNLOAD IMAGES
+// ======================================
+
+const { v4: uuid } = require("uuid");
+
 async function downloadImages(images) {
 
-    const uploadDir = path.join(__dirname, "uploads");
-    await fs.ensureDir(uploadDir);
+    // Create unique folder for this video job
+    const jobFolder = path.join(
+        __dirname,
+        "uploads",
+        uuid()
+    );
+
+    await fs.ensureDir(jobFolder);
 
     const files = [];
 
     for (let i = 0; i < images.length; i++) {
 
-        const filename = path.join(uploadDir, `scene${i}.jpg`);
+        const filename = path.join(
+            jobFolder,
+            `scene${i}.jpg`
+        );
 
         const response = await axios({
             url: images[i],
@@ -31,6 +46,7 @@ async function downloadImages(images) {
             response.data.pipe(writer);
 
             writer.on("finish", resolve);
+
             writer.on("error", reject);
 
         });
@@ -42,6 +58,7 @@ async function downloadImages(images) {
     return files;
 
 }
+    
 
 // ======================================
 // CREATE VIDEO
