@@ -7,10 +7,6 @@ const { exec } = require("child_process");
 // DOWNLOAD IMAGES
 // ======================================
 
-// ======================================
-// DOWNLOAD IMAGES
-// ======================================
-
 const { v4: uuid } = require("uuid");
 
 async function downloadImages(images) {
