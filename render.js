@@ -59,9 +59,35 @@ console.log("Temporary files cleaned.");
         video: `/output/${id}.mp4`,
         captions,
         music,
-        voice
+        voice,
+        duration:"59 seconds",
+ platform:[
+    "facebook",
+    "instagram",
+    "tiktok"
+ ],
+ status:"ready"
     };
 
 }
+setInterval(async()=>{
 
+const files = await fs.readdir(outputDir);
+
+for(const file of files){
+
+const full =
+path.join(outputDir,file);
+
+const age =
+Date.now() - (await fs.stat(full)).mtimeMs;
+
+
+if(age > 86400000){
+await fs.remove(full);
+}
+
+}
+
+},3600000);
 module.exports = renderVideo;
