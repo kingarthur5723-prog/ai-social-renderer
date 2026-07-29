@@ -122,6 +122,13 @@ console.log(subtitleText);
         text += `file '${img}'\n`;
         text += "duration 5\n";
     });
+    const hasVoice =
+    narration &&
+    await fs.exists(narration);
+
+const hasMusic =
+    music &&
+    await fs.exists(music);
 
     text += `file '${images[images.length - 1]}'\n`;
 
@@ -129,9 +136,34 @@ console.log(subtitleText);
 
     return new Promise((resolve, reject) => {
 
-        const cmd = [
-            "ffmpeg",
-            "-y",
+        let command = [
+"ffmpeg",
+"-y"
+];
+
+
+// Add narration
+
+if(hasVoice){
+
+command.push(
+"-i",
+`"${narration}"`
+);
+
+}
+
+
+// Add music
+
+if(hasMusic){
+
+command.push(
+"-i",
+`"${music}"`
+);
+
+}
 
             "-f","concat",
             "-safe","0",
