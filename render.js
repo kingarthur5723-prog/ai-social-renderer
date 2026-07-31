@@ -23,6 +23,7 @@ async function renderVideo(data) {
         const images = data.images || [];
         const captions = data.captions || [];
         const music = data.music || "";
+         const id = uuid();
         let voice = "";
 
 if (data.voice && data.voice.trim() !== "") {
@@ -41,8 +42,6 @@ if (data.voice && data.voice.trim() !== "") {
 
 
         // Create unique job ID
-
-        const id = uuid();
 
 
         // Ensure output exists
