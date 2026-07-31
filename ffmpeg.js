@@ -286,6 +286,8 @@ subtitles='${subtitlePath}'"`
         "-b:a",
         "192k",
 
+        "-shortest",
+
         "-movflags",
         "+faststart",
 
