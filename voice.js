@@ -1,20 +1,24 @@
-const { ttsSave } = require("edge-tts");
+const { EdgeTTS } = require("node-edge-tts");
 const path = require("path");
 const fs = require("fs-extra");
 
 async function generateVoice(text, jobId) {
     const voiceDir = path.join(__dirname, "voices");
-
     await fs.ensureDir(voiceDir);
 
     const output = path.join(voiceDir, `${jobId}.mp3`);
 
-    await ttsSave(text, output, {
+    const tts = new EdgeTTS({
         voice: "en-US-GuyNeural",
-        rate: "+0%",
-        pitch: "+0Hz",
-        volume: "+0%"
+        lang: "en-US",
+        outputFormat: "audio-24khz-48kbitrate-mono-mp3",
+        pitch: "default",
+        rate: "default",
+        volume: "default",
+        timeout: 10000
     });
+
+    await tts.ttsPromise(text, output);
 
     console.log("Voice created:", output);
 
