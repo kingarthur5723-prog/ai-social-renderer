@@ -160,9 +160,11 @@ async function createVideo({
     if(hasMusic){
 
         command.push(
-            "-i",
-            `"${music}"`
-        );
+    "-stream_loop",
+    "-1",
+    "-i",
+    `"${music}"`
+);
 
     }
 
