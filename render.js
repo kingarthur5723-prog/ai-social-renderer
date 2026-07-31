@@ -1,7 +1,7 @@
-const generateVoice = require("./voice");
 const fs = require("fs-extra");
 const path = require("path");
 const { v4: uuid } = require("uuid");
+const generateVoice = require("./voice");
 
 const {
     downloadImages,
@@ -23,15 +23,19 @@ async function renderVideo(data) {
         const images = data.images || [];
         const captions = data.captions || [];
         const music = data.music || "";
-         const id = uuid();
-        let voice = "";
+
+const durationPerScene = data.duration || 5;
+
+// Create unique job ID
+const id = uuid();
+
+// Generate AI voice if text was supplied
+let voice = "";
 
 if (data.voice && data.voice.trim() !== "") {
     console.log("Generating AI voice...");
     voice = await generateVoice(data.voice, id);
 }
-
-        const durationPerScene = data.duration || 5;
 
 
         if (!Array.isArray(images) || images.length === 0) {
