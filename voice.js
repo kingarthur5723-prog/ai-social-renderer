@@ -15,7 +15,7 @@ async function generateVoice(text, jobId) {
         pitch: "default",
         rate: "default",
         volume: "default",
-        timeout: 10000
+        timeout: 10000,
     });
 
     await tts.ttsPromise(text, output);
