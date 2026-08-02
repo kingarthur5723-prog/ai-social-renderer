@@ -130,7 +130,7 @@ async function createVideo({
 
     let command = [
 
-        "ffmpeg",
+        process.env.FFMPEG_PATH || "ffmpeg",
         "-y",
 
         "-f",
