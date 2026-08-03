@@ -19,6 +19,10 @@ async function generateVoice(text, jobId) {
     });
 
     await tts.ttsPromise(text, output);
+    const stats = await fs.stat(output);
+
+console.log("Voice created:", output);
+console.log("Voice size:", stats.size, "bytes");
 
     console.log("Voice created:", output);
 
