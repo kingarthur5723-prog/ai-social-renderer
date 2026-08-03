@@ -32,9 +32,14 @@ const id = uuid();
 // Generate AI voice if text was supplied
 let voice = "";
 
+console.log("Voice text received:");
+console.log(data.voice);
+        
 if (data.voice && data.voice.trim() !== "") {
     console.log("Generating AI voice...");
     voice = await generateVoice(data.voice, id);
+    console.log("Generated voice file:");
+    console.log(voice);
 }
 
 
