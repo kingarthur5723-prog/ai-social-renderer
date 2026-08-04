@@ -22,7 +22,24 @@ async function renderVideo(data) {
 
         const images = data.images || [];
         const captions = data.captions || [];
-        const music = data.music || "";
+        const tracks = [
+    "upbeat.mp3",
+    "relaxing.mp3",
+    "cinematic.mp3",
+    "corporate.mp3",
+    "motivational.mp3"
+];
+
+const randomTrack =
+    tracks[Math.floor(Math.random() * tracks.length)];
+
+const music = path.join(
+    __dirname,
+    "assets",
+    randomTrack
+);
+
+console.log("Selected music:", music);
 
 const durationPerScene = data.duration || 5;
 
