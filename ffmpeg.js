@@ -92,6 +92,21 @@ async function createVideo({
 
     await fs.writeFile(subtitleFile, srt);
 
+    // ----------------------------
+    // CHECK AUDIO
+    // ----------------------------
+
+    const hasVoice =
+        narration &&
+        await fs.pathExists(narration);
+
+    const hasMusic =
+        music &&
+        await fs.pathExists(music);
+
+    console.log("Voice:", hasVoice);
+    console.log("Music:", hasMusic);
+
 // ----------------------------
 // CREATE IMAGE LIST
 // (uses individual scene durations)
@@ -141,21 +156,6 @@ images.forEach((image, i) => {
 list += `file '${images[images.length - 1]}'\n`;
 
 await fs.writeFile(listFile, list);
-
-    // ----------------------------
-    // CHECK AUDIO
-    // ----------------------------
-
-    const hasVoice =
-        narration &&
-        await fs.pathExists(narration);
-
-    const hasMusic =
-        music &&
-        await fs.pathExists(music);
-
-    console.log("Voice:", hasVoice);
-    console.log("Music:", hasMusic);
 
     // ----------------------------
     // BUILD FFMPEG COMMAND
