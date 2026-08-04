@@ -92,22 +92,55 @@ async function createVideo({
 
     await fs.writeFile(subtitleFile, srt);
 
-    // ----------------------------
-    // CREATE IMAGE LIST
-    // ----------------------------
+// ----------------------------
+// CREATE IMAGE LIST
+// (uses individual scene durations)
+// ----------------------------
 
-    let list = "";
+let list = "";
 
-    images.forEach(image => {
+let sceneDurations = [];
 
-        list += `file '${image}'\n`;
-        list += `duration ${duration}\n`;
+if (hasVoice) {
+
+    // Get voice duration
+    const ffprobe = process.env.FFPROBE_PATH || "ffprobe";
+
+    const voiceLength = await new Promise((resolve, reject) => {
+
+        exec(
+            `${ffprobe} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${narration}"`,
+            (err, stdout) => {
+
+                if (err) return reject(err);
+
+                resolve(parseFloat(stdout));
+
+            }
+        );
 
     });
 
-    list += `file '${images[images.length - 1]}'\n`;
+    const each = voiceLength / images.length;
 
-    await fs.writeFile(listFile, list);
+    sceneDurations = Array(images.length).fill(each);
+
+} else {
+
+    sceneDurations = Array(images.length).fill(duration);
+
+}
+
+images.forEach((image, i) => {
+
+    list += `file '${image}'\n`;
+    list += `duration ${sceneDurations[i]}\n`;
+
+});
+
+list += `file '${images[images.length - 1]}'\n`;
+
+await fs.writeFile(listFile, list);
 
     // ----------------------------
     // CHECK AUDIO
