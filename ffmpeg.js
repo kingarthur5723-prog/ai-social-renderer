@@ -254,12 +254,12 @@ motions[Math.floor(Math.random()*motions.length)];
 `"scale=1350:2400:force_original_aspect_ratio=increase,
 crop=1080:1920,
 zoompan=
-z='min(zoom+0.00055,1.18)':
-x='if(lte(on,60),iw/2-(iw/zoom/2)-80+on*1.3,iw/2-(iw/zoom/2))':
-y='ih/2-(ih/zoom/2)':
+z='${motion.zoom}':
+x='${motion.x}':
+y='${motion.y}':
 d=120:
 s=1080x1920:
-fps=30,
+fps=30
 eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,
 unsharp=5:5:1.2:5:5:0,
 ass='${subtitlePath}'"`
@@ -320,28 +320,28 @@ ass='${subtitlePath}'"`
         "libx264",
 
         "-preset",
-"slow",
+        "faster",
 
-"-crf",
-"17",
+        "-crf",
+        "17",
 
-"-profile:v",
-"high",
+        "-profile:v",
+        "high",
 
-"-level",
-"4.2",
+        "-level",
+        "4.2",
 
-"-g",
-"60",
+        "-g",
+        "60",
 
-"-bf",
-"2",
+        "-bf",
+        "2",
 
-"-maxrate",
-"8M",
+        "-maxrate",
+        "8M",
 
-"-bufsize",
-"16M",
+        "-bufsize",
+        "16M",
 
 
         "-pix_fmt",
@@ -351,15 +351,18 @@ ass='${subtitlePath}'"`
         "aac",
 
         "-af",
-"loudnorm",
+        "loudnorm",
 
-"-b:a",
-"320k",
+        "-b:a",
+        "320k",
 
         "-shortest",
 
         "-movflags",
         "+faststart",
+
+        "-threads",
+        "0",
 
         `"${outputFile}"`
 
