@@ -9,8 +9,13 @@ const { exec } = require("child_process");
 
 async function downloadImages(images) {
 
-    const uploadDir = path.join(__dirname, "uploads");
-    await fs.ensureDir(uploadDir);
+    const { v4: uuid } = require("uuid");
+
+const jobId = uuid();
+
+const uploadDir = path.join(__dirname, "uploads", jobId);
+
+await fs.ensureDir(uploadDir);
 
     const files = [];
 
@@ -204,11 +209,21 @@ await fs.writeFile(listFile, list);
 
     command.push(
 
-        "-vf",
+    "-vf",
 
-        `"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.00010,1.03)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=96:s=720x1280:fps=24,subtitles='${subtitlePath}'"`
+    `"scale=1080×1920:force_original_aspect_ratio=increase,crop=1080×1920,
+zoompan=
+z='min(zoom+0.00055,1.18)':
+x='if(lte(on,48),iw/2-(iw/zoom/2)-60+on*1.2,iw/2-(iw/zoom/2))':
+y='ih/2-(ih/zoom/2)':
+d=120:
+s=1080×1920:
+fps=30,
+eq=contrast=1.08:brightness=0.02:saturation=1.18,
+unsharp=5:5:1.2:5:5:0.0,
+subtitles='${subtitlePath}'"`
 
-    );
+);
 
     if (hasVoice && hasMusic) {
 
@@ -264,10 +279,28 @@ await fs.writeFile(listFile, list);
         "libx264",
 
         "-preset",
-        "medium",
+        "slow",
 
         "-crf",
-        "20",
+        "17",
+
+        "-profile:v",
+"high",
+
+"-level",
+"4.2",
+
+"-bf",
+"2",
+
+"-g",
+"60",
+
+"-maxrate",
+"8M",
+
+"-bufsize",
+"16M",
 
         "-pix_fmt",
         "yuv420p",
