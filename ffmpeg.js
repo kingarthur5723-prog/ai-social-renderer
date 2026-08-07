@@ -595,3 +595,85 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
     console.log(
         "===================================="
     );
+
+    // ======================================
+    // RUN FFMPEG
+    // ======================================
+
+    return new Promise((resolve, reject) => {
+
+        console.log("Starting FFmpeg render...");
+
+        const child = exec(cmd);
+
+        child.stdout.on("data", data => {
+
+            console.log(
+                data.toString()
+            );
+
+        });
+
+        child.stderr.on("data", data => {
+
+            console.log(
+                data.toString()
+            );
+
+        });
+
+        child.on("error", error => {
+
+            console.error(
+                "FFmpeg process error:",
+                error
+            );
+
+            reject(error);
+
+        });
+
+        child.on("close", code => {
+
+            console.log(
+                "FFmpeg exited with code:",
+                code
+            );
+
+            if (code === 0) {
+
+                console.log(
+                    "Video rendered successfully:"
+                );
+
+                console.log(
+                    outputFile
+                );
+
+                resolve(outputFile);
+
+            } else {
+
+                reject(
+                    new Error(
+                        "FFmpeg failed with exit code " +
+                        code
+                    )
+                );
+
+            }
+
+        });
+
+    });
+
+}
+
+// ======================================
+// EXPORTS
+// ======================================
+
+module.exports = {
+    downloadImages,
+    createVideo
+};
