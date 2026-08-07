@@ -41,7 +41,7 @@ const music = path.join(
 
 console.log("Selected music:", music);
 
-const durationPerScene = data.duration || 5;
+const durationPerScene = data.duration || 4.5;
 
 // Create unique job ID
 const id = uuid();
