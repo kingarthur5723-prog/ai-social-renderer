@@ -274,17 +274,17 @@ ass=${subtitlePath}
 
         command.push(
 
-            "-filter_complex",
+    "-filter_complex",
 
-            `[1:a]volume=1[narration];[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]`,
+    "[1:a]volume=1[narration];[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]",
 
-            "-map",
-            "0:v",
+    "-map",
+    "0:v",
 
-            "-map",
-            "[audio]"
+    "-map",
+    "[audio]"
 
-        );
+);
 
     }
     else if (hasVoice) {
