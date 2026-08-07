@@ -248,26 +248,17 @@ const motion =
 motions[Math.floor(Math.random()*motions.length)];
 
     const subtitlePath = subtitleFile
-  .replace(/\\/g, "/")
-  .replace(/:/g, "\\:");
+    .replace(/\\/g, "/")
+    .replace(/:/g, "\\:");
 
-    command.push(
-
-"-vf",
-
-`"scale=1350:2400:force_original_aspect_ratio=increase,
+command.push(
+    "-vf",
+    `scale=1350:2400:force_original_aspect_ratio=increase,
 crop=1080:1920,
-zoompan=
-z='${motion.zoom}':
-x='${motion.x}':
-y='${motion.y}':
-d=120:
-s=1080x1920:
-fps=30,
+zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30,
 eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,
 unsharp=5:5:1.2:5:5:0,
-ass=${subtitlePath}
-
+ass='${subtitlePath}'`
 );
 
     if (hasVoice && hasMusic) {
