@@ -316,3 +316,205 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         "FFmpeg image list created:",
         listFile
     );
+
+    // ======================================
+    // BUILD FFMPEG COMMAND
+    // ======================================
+
+    const ffmpeg =
+        process.env.FFMPEG_PATH || "ffmpeg";
+
+    let command = [
+        ffmpeg,
+        "-y",
+
+        "-f",
+        "concat",
+
+        "-safe",
+        "0",
+
+        "-i",
+        `"${listFile}"`
+    ];
+
+    // ======================================
+    // ADD VOICE INPUT
+    // ======================================
+
+    if (hasVoice) {
+
+        command.push(
+            "-i",
+            `"${narration}"`
+        );
+
+    }
+
+    // ======================================
+    // ADD MUSIC INPUT
+    // ======================================
+
+    if (hasMusic) {
+
+        command.push(
+            "-stream_loop",
+            "-1",
+
+            "-i",
+            `"${music}"`
+        );
+
+    }
+
+    // ======================================
+    // CINEMATIC MOTIONS
+    // ======================================
+
+    const motions = [
+
+        {
+            zoom: "min(zoom+0.00060,1.18)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)"
+        },
+
+        {
+            zoom: "min(zoom+0.00045,1.15)",
+            x: "iw/2-(iw/zoom/2)-120+on*2",
+            y: "ih/2-(ih/zoom/2)"
+        },
+
+        {
+            zoom: "min(zoom+0.00045,1.15)",
+            x: "iw/2-(iw/zoom/2)+120-on*2",
+            y: "ih/2-(ih/zoom/2)"
+        },
+
+        {
+            zoom: "min(zoom+0.00050,1.20)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)-100+on*1.8"
+        },
+
+        {
+            zoom: "min(zoom+0.00050,1.20)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)+100-on*1.8"
+        }
+
+    ];
+
+    const motion =
+        motions[
+            Math.floor(
+                Math.random() * motions.length
+            )
+        ];
+
+    console.log(
+        "Selected motion:",
+        motion
+    );
+
+    // ======================================
+    // SUBTITLE PATH
+    // ======================================
+
+    const subtitlePath =
+        subtitleFile
+            .replace(/\\/g, "/")
+            .replace(/:/g, "\\:");
+
+    // ======================================
+    // VIDEO FILTER
+    // ======================================
+
+    const videoFilter =
+        [
+            "scale=1350:2400:force_original_aspect_ratio=increase",
+
+            "crop=1080:1920",
+
+            `zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30`,
+
+            "eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05",
+
+            "unsharp=5:5:1.2:5:5:0",
+
+            `ass='${subtitlePath}'`
+        ].join(",");
+
+    // ======================================
+    // ADD VIDEO FILTER
+    // ======================================
+
+    command.push(
+        "-vf",
+        `"${videoFilter}"`
+    );
+
+    // ======================================
+    // AUDIO MIXING
+    // ======================================
+
+    if (hasVoice && hasMusic) {
+
+        const audioFilter =
+            "[1:a]volume=1[narration];" +
+            "[2:a]volume=0.08[music];" +
+            "[narration][music]" +
+            "amix=inputs=2:" +
+            "duration=first:" +
+            "dropout_transition=2" +
+            "[audio]";
+
+        command.push(
+            "-filter_complex",
+            `"${audioFilter}"`,
+
+            "-map",
+            "0:v",
+
+            "-map",
+            "[audio]"
+        );
+
+    }
+
+    else if (hasVoice) {
+
+        command.push(
+
+            "-map",
+            "0:v",
+
+            "-map",
+            "1:a"
+
+        );
+
+    }
+
+    else if (hasMusic) {
+
+        command.push(
+
+            "-map",
+            "0:v",
+
+            "-map",
+            "1:a"
+
+        );
+
+    }
+
+    else {
+
+        command.push(
+            "-map",
+            "0:v"
+        );
+
+    }
