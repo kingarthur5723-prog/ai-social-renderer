@@ -247,6 +247,10 @@ y:"ih/2-(ih/zoom/2)+100-on*1.8"
 const motion =
 motions[Math.floor(Math.random()*motions.length)];
 
+    const subtitlePath = subtitleFile
+  .replace(/\\/g, "/")
+  .replace(/:/g, "\\:");
+
     command.push(
 
 "-vf",
