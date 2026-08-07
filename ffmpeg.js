@@ -66,36 +66,44 @@ async function createVideo({
     const uploadDir = path.join(__dirname, "uploads");
 
     const listFile = path.join(uploadDir, "list.txt");
-    const subtitleFile = path.join(uploadDir, "captions.srt");
+    const subtitleFile = path.join(uploadDir, "captions.ass");
 
     // ----------------------------
     // CREATE SRT SUBTITLES
     // ----------------------------
 
-    let srt = "";
+    let ass = `[Script Info]
+ScriptType: v4.00+
 
-    function formatTime(seconds) {
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Default,Arial,18,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,2,50,50,120,1
 
-        const hh = String(Math.floor(seconds / 3600)).padStart(2, "0");
-        const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-        const ss = String(Math.floor(seconds % 60)).padStart(2, "0");
+[Events]
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+`;
 
-        return `${hh}:${mm}:${ss},000`;
+function assTime(sec){
 
-    }
+const h=String(Math.floor(sec/3600)).padStart(1,"0");
+const m=String(Math.floor((sec%3600)/60)).padStart(2,"0");
+const s=(sec%60).toFixed(2).padStart(5,"0");
 
-    captions.forEach((caption, i) => {
+return `${h}:${m}:${s}`;
 
-        const start = i * duration;
-        const end = (i + 1) * duration;
+}
 
-        srt += `${i + 1}\n`;
-        srt += `${formatTime(start)} --> ${formatTime(end)}\n`;
-        srt += `${caption}\n\n`;
+captions.forEach((caption,i)=>{
 
-    });
+const start=i*duration;
+const end=(i+1)*duration;
 
-    await fs.writeFile(subtitleFile, srt);
+ass +=
+`Dialogue: 0,${assTime(start)},${assTime(end)},Default,,0,0,0,,{\\fad(250,250)}${caption}\n`;
+
+});
+
+await fs.writeFile(subtitleFile, ass);
 
     // ----------------------------
     // CHECK AUDIO
@@ -202,26 +210,59 @@ await fs.writeFile(listFile, list);
 
     }
 
-    const subtitlePath =
-        subtitleFile
-            .replace(/\\/g, "/")
-            .replace(/:/g, "\\:");
+    const motions = [
+
+{
+zoom:"min(zoom+0.00060,1.18)",
+x:"iw/2-(iw/zoom/2)",
+y:"ih/2-(ih/zoom/2)"
+},
+
+{
+zoom:"min(zoom+0.00045,1.15)",
+x:"iw/2-(iw/zoom/2)-120+on*2",
+y:"ih/2-(ih/zoom/2)"
+},
+
+{
+zoom:"min(zoom+0.00045,1.15)",
+x:"iw/2-(iw/zoom/2)+120-on*2",
+y:"ih/2-(ih/zoom/2)"
+},
+
+{
+zoom:"min(zoom+0.00050,1.20)",
+x:"iw/2-(iw/zoom/2)",
+y:"ih/2-(ih/zoom/2)-100+on*1.8"
+},
+
+{
+zoom:"min(zoom+0.00050,1.20)",
+x:"iw/2-(iw/zoom/2)",
+y:"ih/2-(ih/zoom/2)+100-on*1.8"
+}
+
+];
+
+const motion =
+motions[Math.floor(Math.random()*motions.length)];
 
     command.push(
 
-    "-vf",
+"-vf",
 
-    `"scale=1080×1920:force_original_aspect_ratio=increase,crop=1080×1920,
+`"scale=1350:2400:force_original_aspect_ratio=increase,
+crop=1080:1920,
 zoompan=
 z='min(zoom+0.00055,1.18)':
-x='if(lte(on,48),iw/2-(iw/zoom/2)-60+on*1.2,iw/2-(iw/zoom/2))':
+x='if(lte(on,60),iw/2-(iw/zoom/2)-80+on*1.3,iw/2-(iw/zoom/2))':
 y='ih/2-(ih/zoom/2)':
 d=120:
-s=1080×1920:
+s=1080x1920:
 fps=30,
-eq=contrast=1.08:brightness=0.02:saturation=1.18,
-unsharp=5:5:1.2:5:5:0.0,
-subtitles='${subtitlePath}'"`
+eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,
+unsharp=5:5:1.2:5:5:0,
+ass='${subtitlePath}'"`
 
 );
 
@@ -231,7 +272,7 @@ subtitles='${subtitlePath}'"`
 
             "-filter_complex",
 
-            `"[1:a]volume=1[narration];[2:a]volume=0.15[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]"`,
+            `"[1:a]volume=1[narration];"[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]"`,
 
             "-map",
             "0:v",
@@ -279,22 +320,22 @@ subtitles='${subtitlePath}'"`
         "libx264",
 
         "-preset",
-        "slow",
+"slow",
 
-        "-crf",
-        "17",
+"-crf",
+"17",
 
-        "-profile:v",
+"-profile:v",
 "high",
 
 "-level",
 "4.2",
 
-"-bf",
-"2",
-
 "-g",
 "60",
+
+"-bf",
+"2",
 
 "-maxrate",
 "8M",
@@ -302,14 +343,18 @@ subtitles='${subtitlePath}'"`
 "-bufsize",
 "16M",
 
+
         "-pix_fmt",
         "yuv420p",
 
         "-c:a",
         "aac",
 
-        "-b:a",
-        "192k",
+        "-af",
+"loudnorm",
+
+"-b:a",
+"320k",
 
         "-shortest",
 
