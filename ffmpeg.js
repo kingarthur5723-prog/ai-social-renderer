@@ -1,7 +1,8 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { exec } = require("child_process");
+const { execFile } = require("child_process");
+const { v4: uuid } = require("uuid");
 
 // ======================================
 // DOWNLOAD IMAGES
@@ -9,19 +10,24 @@ const { exec } = require("child_process");
 
 async function downloadImages(images) {
 
-    const { v4: uuid } = require("uuid");
+    const jobId = uuid();
 
-const jobId = uuid();
+    const uploadDir = path.join(
+        __dirname,
+        "uploads",
+        jobId
+    );
 
-const uploadDir = path.join(__dirname, "uploads", jobId);
-
-await fs.ensureDir(uploadDir);
+    await fs.ensureDir(uploadDir);
 
     const files = [];
 
     for (let i = 0; i < images.length; i++) {
 
-        const file = path.join(uploadDir, `image_${i}.jpg`);
+        const file = path.join(
+            uploadDir,
+            `image_${i}.jpg`
+        );
 
         console.log("Downloading:", images[i]);
 
@@ -46,9 +52,11 @@ await fs.ensureDir(uploadDir);
 
     }
 
-    return files;
+    console.log("Downloaded:", files);
 
+    return files;
 }
+
 
 // ======================================
 // CREATE VIDEO
@@ -63,14 +71,36 @@ async function createVideo({
     duration = 5
 }) {
 
-    const uploadDir = path.join(__dirname, "uploads");
+    // ======================================
+    // CREATE UNIQUE JOB DIRECTORY
+    // ======================================
 
-    const listFile = path.join(uploadDir, "list.txt");
-    const subtitleFile = path.join(uploadDir, "captions.ass");
+    const jobId = uuid();
 
-    // ----------------------------
-    // CREATE SRT SUBTITLES
-    // ----------------------------
+    const jobDir = path.join(
+        __dirname,
+        "uploads",
+        jobId
+    );
+
+    await fs.ensureDir(jobDir);
+
+    const listFile = path.join(
+        jobDir,
+        "list.txt"
+    );
+
+    const subtitleFile = path.join(
+        jobDir,
+        "captions.ass"
+    );
+
+    console.log("Job directory:", jobDir);
+
+
+    // ======================================
+    // CREATE ASS SUBTITLES
+    // ======================================
 
     let ass = `[Script Info]
 ScriptType: v4.00+
@@ -83,100 +113,198 @@ Style: Default,Arial,18,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 `;
 
-function assTime(sec){
+    function assTime(sec) {
 
-const h=String(Math.floor(sec/3600)).padStart(1,"0");
-const m=String(Math.floor((sec%3600)/60)).padStart(2,"0");
-const s=(sec%60).toFixed(2).padStart(5,"0");
+        const h = String(
+            Math.floor(sec / 3600)
+        ).padStart(1, "0");
 
-return `${h}:${m}:${s}`;
+        const m = String(
+            Math.floor((sec % 3600) / 60)
+        ).padStart(2, "0");
 
-}
+        const s = (
+            sec % 60
+        ).toFixed(2).padStart(5, "0");
 
-captions.forEach((caption,i)=>{
+        return `${h}:${m}:${s}`;
+    }
 
-const start=i*duration;
-const end=(i+1)*duration;
 
-ass +=
-`Dialogue: 0,${assTime(start)},${assTime(end)},Default,,0,0,0,,{\\fad(250,250)}${caption}\n`;
+    captions.forEach((caption, i) => {
 
-});
+        const start = i * duration;
+        const end = (i + 1) * duration;
 
-await fs.writeFile(subtitleFile, ass);
+        ass +=
+            `Dialogue: 0,${assTime(start)},${assTime(end)},Default,,0,0,0,,{\\fad(250,250)}${caption}\n`;
 
-    // ----------------------------
+    });
+
+    await fs.writeFile(
+        subtitleFile,
+        ass
+    );
+
+    console.log("Subtitle file created:", subtitleFile);
+
+
+    // ======================================
     // CHECK AUDIO
-    // ----------------------------
+    // ======================================
 
     const hasVoice =
-        narration &&
-        await fs.pathExists(narration);
+        Boolean(
+            narration &&
+            await fs.pathExists(narration)
+        );
 
     const hasMusic =
-        music &&
-        await fs.pathExists(music);
+        Boolean(
+            music &&
+            await fs.pathExists(music)
+        );
 
     console.log("Voice:", hasVoice);
     console.log("Music:", hasMusic);
 
-// ----------------------------
-// CREATE IMAGE LIST
-// (uses individual scene durations)
-// ----------------------------
 
-let list = "";
+    // ======================================
+    // CREATE IMAGE LIST
+    // ======================================
 
-let sceneDurations = [];
+    let list = "";
 
-if (hasVoice) {
+    let sceneDurations = [];
 
-    // Get voice duration
-    const ffprobe = process.env.FFPROBE_PATH || "ffprobe";
 
-    const voiceLength = await new Promise((resolve, reject) => {
+    if (hasVoice) {
 
-        exec(
-            `${ffprobe} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${narration}"`,
-            (err, stdout) => {
+        const ffprobe =
+            process.env.FFPROBE_PATH || "ffprobe";
 
-                if (err) return reject(err);
 
-                resolve(parseFloat(stdout));
+        const voiceLength = await new Promise(
+            (resolve, reject) => {
+
+                execFile(
+                    ffprobe,
+                    [
+                        "-v",
+                        "error",
+
+                        "-show_entries",
+                        "format=duration",
+
+                        "-of",
+                        "default=noprint_wrappers=1:nokey=1",
+
+                        narration
+                    ],
+
+                    (err, stdout, stderr) => {
+
+                        if (err) {
+
+                            console.error(
+                                "FFprobe error:",
+                                stderr
+                            );
+
+                            return reject(err);
+                        }
+
+                        const value =
+                            parseFloat(
+                                stdout.trim()
+                            );
+
+                        if (!Number.isFinite(value)) {
+
+                            return reject(
+                                new Error(
+                                    "Could not determine voice duration."
+                                )
+                            );
+
+                        }
+
+                        resolve(value);
+
+                    }
+                );
 
             }
         );
 
+
+        console.log(
+            "Voice duration:",
+            voiceLength
+        );
+
+
+        const each =
+            voiceLength / images.length;
+
+
+        sceneDurations =
+            Array(images.length).fill(each);
+
+    }
+    else {
+
+        sceneDurations =
+            Array(images.length).fill(duration);
+
+    }
+
+
+    // ======================================
+    // WRITE CONCAT LIST
+    // ======================================
+
+    images.forEach((image, i) => {
+
+        list += `file '${image}'\n`;
+
+        list +=
+            `duration ${sceneDurations[i]}\n`;
+
     });
 
-    const each = voiceLength / images.length;
 
-    sceneDurations = Array(images.length).fill(each);
+    // FFmpeg concat requires the last file again.
+    list +=
+        `file '${images[images.length - 1]}'\n`;
 
-} else {
 
-    sceneDurations = Array(images.length).fill(duration);
+    await fs.writeFile(
+        listFile,
+        list
+    );
 
-}
 
-images.forEach((image, i) => {
+    console.log(
+        "Concat list created:",
+        listFile
+    );
 
-    list += `file '${image}'\n`;
-    list += `duration ${sceneDurations[i]}\n`;
 
-});
+    // ======================================
+    // FFMPEG PATH
+    // ======================================
 
-list += `file '${images[images.length - 1]}'\n`;
+    const ffmpeg =
+        process.env.FFMPEG_PATH || "ffmpeg";
 
-await fs.writeFile(listFile, list);
 
-    // ----------------------------
-    // BUILD FFMPEG COMMAND
-    // ----------------------------
+    // ======================================
+    // BUILD FFMPEG ARGUMENTS
+    // ======================================
 
-    let command = [
+    const args = [
 
-        process.env.FFMPEG_PATH || "ffmpeg",
         "-y",
 
         "-f",
@@ -186,96 +314,162 @@ await fs.writeFile(listFile, list);
         "0",
 
         "-i",
-        `"${listFile}"`
+        listFile
 
     ];
 
+
+    // ======================================
+    // VOICE INPUT
+    // ======================================
+
     if (hasVoice) {
 
-        command.push(
+        args.push(
             "-i",
-            `"${narration}"`
+            narration
         );
 
     }
+
+
+    // ======================================
+    // MUSIC INPUT
+    // ======================================
 
     if (hasMusic) {
 
-        command.push(
+        args.push(
+
             "-stream_loop",
             "-1",
+
             "-i",
-            `"${music}"`
+            music
+
         );
 
     }
+
+
+    // ======================================
+    // MOTION PRESETS
+    // ======================================
 
     const motions = [
 
-{
-zoom:"min(zoom+0.00060,1.18)",
-x:"iw/2-(iw/zoom/2)",
-y:"ih/2-(ih/zoom/2)"
-},
+        {
+            zoom: "min(zoom+0.00060,1.18)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)"
+        },
 
-{
-zoom:"min(zoom+0.00045,1.15)",
-x:"iw/2-(iw/zoom/2)-120+on*2",
-y:"ih/2-(ih/zoom/2)"
-},
+        {
+            zoom: "min(zoom+0.00045,1.15)",
+            x: "iw/2-(iw/zoom/2)-120+on*2",
+            y: "ih/2-(ih/zoom/2)"
+        },
 
-{
-zoom:"min(zoom+0.00045,1.15)",
-x:"iw/2-(iw/zoom/2)+120-on*2",
-y:"ih/2-(ih/zoom/2)"
-},
+        {
+            zoom: "min(zoom+0.00045,1.15)",
+            x: "iw/2-(iw/zoom/2)+120-on*2",
+            y: "ih/2-(ih/zoom/2)"
+        },
 
-{
-zoom:"min(zoom+0.00050,1.20)",
-x:"iw/2-(iw/zoom/2)",
-y:"ih/2-(ih/zoom/2)-100+on*1.8"
-},
+        {
+            zoom: "min(zoom+0.00050,1.20)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)-100+on*1.8"
+        },
 
-{
-zoom:"min(zoom+0.00050,1.20)",
-x:"iw/2-(iw/zoom/2)",
-y:"ih/2-(ih/zoom/2)+100-on*1.8"
-}
+        {
+            zoom: "min(zoom+0.00050,1.20)",
+            x: "iw/2-(iw/zoom/2)",
+            y: "ih/2-(ih/zoom/2)+100-on*1.8"
+        }
 
-];
+    ];
 
-const motion =
-motions[Math.floor(Math.random()*motions.length)];
 
-    const subtitlePath = subtitleFile
-    .replace(/\\/g, "/")
-    .replace(/:/g, "\\:");
+    const motion =
+        motions[
+            Math.floor(
+                Math.random() * motions.length
+            )
+        ];
 
-command.push(
-    "-vf",
-    `scale=1350:2400:force_original_aspect_ratio=increase,
-crop=1080:1920,
-zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30,
-eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,
-unsharp=5:5:1.2:5:5:0,
-ass='${subtitlePath}'`
-);
+
+    console.log(
+        "Selected motion:",
+        motion
+    );
+
+
+    // ======================================
+    // VIDEO FILTER
+    // ======================================
+
+    const videoFilter = [
+
+        "scale=1350:2400:force_original_aspect_ratio=increase",
+
+        "crop=1080:1920",
+
+        `zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30`,
+
+        "eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05",
+
+        "unsharp=5:5:1.2:5:5:0",
+
+        `ass='${subtitleFile}'`
+
+    ].join(",");
+
+
+    // ======================================
+    // ADD VIDEO FILTER
+    // ======================================
+
+    args.push(
+        "-vf",
+        videoFilter
+    );
+
+
+    // ======================================
+    // AUDIO MIXING
+    // ======================================
 
     if (hasVoice && hasMusic) {
 
-        command.push(
-    "-filter_complex",
-    "[1:a]volume=1[narration];[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]",
-    "-map",
-    "0:v",
-    "-map",
-    "[audio]"
-);
+        const audioFilter =
+            "[1:a]volume=1[narration];" +
+            "[2:a]volume=0.08[music];" +
+            "[narration][music]" +
+            "amix=inputs=2:" +
+            "duration=first:" +
+            "dropout_transition=2" +
+            "[audio]";
+
+
+        args.push(
+
+            "-filter_complex",
+            audioFilter,
+
+            "-map",
+            "0:v",
+
+            "-map",
+            "[audio]"
+
+        );
 
     }
+
     else if (hasVoice) {
 
-        command.push(
+        args.push(
 
             "-map",
             "0:v",
@@ -286,9 +480,10 @@ ass='${subtitlePath}'`
         );
 
     }
+
     else if (hasMusic) {
 
-        command.push(
+        args.push(
 
             "-map",
             "0:v",
@@ -299,12 +494,22 @@ ass='${subtitlePath}'`
         );
 
     }
-    
-    // ----------------------------
-    // OUTPUT SETTINGS
-    // ----------------------------
 
-    command.push(
+    else {
+
+        args.push(
+            "-map",
+            "0:v"
+        );
+
+    }
+
+
+    // ======================================
+    // OUTPUT SETTINGS
+    // ======================================
+
+    args.push(
 
         "-c:v",
         "libx264",
@@ -333,7 +538,6 @@ ass='${subtitlePath}'`
         "-bufsize",
         "16M",
 
-
         "-pix_fmt",
         "yuv420p",
 
@@ -354,51 +558,128 @@ ass='${subtitlePath}'`
         "-threads",
         "0",
 
-        `"${outputFile}"`
+        outputFile
 
     );
 
-    const cmd = command.join(" ");
+
+    // ======================================
+    // LOG COMMAND
+    // ======================================
 
     console.log("====================================");
-    console.log(cmd);
+
+    console.log(
+        "FFMPEG:",
+        ffmpeg
+    );
+
+    console.log(
+        "ARGS:",
+        JSON.stringify(
+            args,
+            null,
+            2
+        )
+    );
+
     console.log("====================================");
 
-    return new Promise((resolve, reject) => {
 
-        const child = exec(cmd);
+    // ======================================
+    // EXECUTE FFMPEG
+    // ======================================
 
-        child.stdout.on("data", data => {
-            console.log(data.toString());
-        });
+    return new Promise(
+        (resolve, reject) => {
 
-        child.stderr.on("data", data => {
-            console.log(data.toString());
-        });
+            const child =
+                execFile(
+                    ffmpeg,
+                    args
+                );
 
-        child.on("close", code => {
 
-            if (code === 0) {
+            child.stdout.on(
+                "data",
+                data => {
 
-                resolve(outputFile);
+                    console.log(
+                        data.toString()
+                    );
 
-            } else {
+                }
+            );
 
-                reject(new Error("FFmpeg failed with exit code " + code));
 
-            }
+            child.stderr.on(
+                "data",
+                data => {
 
-        });
+                    console.log(
+                        data.toString()
+                    );
 
-    });
+                }
+            );
+
+
+            child.on(
+                "error",
+                error => {
+
+                    console.error(
+                        "FFmpeg process error:",
+                        error
+                    );
+
+                    reject(error);
+
+                }
+            );
+
+
+            child.on(
+                "close",
+                code => {
+
+                    if (code === 0) {
+
+                        console.log(
+                            "FFmpeg completed successfully."
+                        );
+
+                        resolve(outputFile);
+
+                    }
+                    else {
+
+                        reject(
+                            new Error(
+                                "FFmpeg failed with exit code " +
+                                code
+                            )
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+    );
 
 }
+
 
 // ======================================
 // EXPORTS
 // ======================================
 
 module.exports = {
+
     downloadImages,
+
     createVideo
+
 };
