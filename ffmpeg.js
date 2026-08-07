@@ -518,6 +518,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         );
 
     }
+    
     // ======================================
     // OUTPUT / QUALITY SETTINGS
     // ======================================
