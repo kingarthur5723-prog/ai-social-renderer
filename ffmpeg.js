@@ -263,10 +263,10 @@ x='${motion.x}':
 y='${motion.y}':
 d=120:
 s=1080x1920:
-fps=30
+fps=30,
 eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,
 unsharp=5:5:1.2:5:5:0,
-ass='${subtitlePath}'"`
+ass=${subtitlePath}
 
 );
 
@@ -276,7 +276,7 @@ ass='${subtitlePath}'"`
 
             "-filter_complex",
 
-            `"[1:a]volume=1[narration];"[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]"`,
+            `[1:a]volume=1[narration];[2:a]volume=0.08[music];[narration][music]amix=inputs=2:duration=first:dropout_transition=2[audio]`,
 
             "-map",
             "0:v",
