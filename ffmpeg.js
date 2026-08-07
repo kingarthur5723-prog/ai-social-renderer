@@ -180,3 +180,139 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         "Music:",
         hasMusic
     );
+    
+    // ======================================
+    // CREATE IMAGE LIST
+    // ======================================
+
+    let list = "";
+
+    let sceneDurations = [];
+
+    // ======================================
+    // GET VOICE DURATION
+    // ======================================
+
+    if (hasVoice) {
+
+        const ffprobe =
+            process.env.FFPROBE_PATH || "ffprobe";
+
+        console.log(
+            "Getting voice duration..."
+        );
+
+        const voiceLength =
+            await new Promise((resolve, reject) => {
+
+                exec(
+                    `${ffprobe} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${narration}"`,
+                    (err, stdout, stderr) => {
+
+                        if (err) {
+
+                            console.error(
+                                "FFprobe error:",
+                                stderr
+                            );
+
+                            return reject(err);
+                        }
+
+                        const durationValue =
+                            parseFloat(stdout);
+
+                        if (
+                            !Number.isFinite(
+                                durationValue
+                            )
+                        ) {
+
+                            return reject(
+                                new Error(
+                                    "Could not determine voice duration"
+                                )
+                            );
+
+                        }
+
+                        resolve(
+                            durationValue
+                        );
+
+                    }
+                );
+
+            });
+
+        console.log(
+            "Voice duration:",
+            voiceLength,
+            "seconds"
+        );
+
+        // ======================================
+        // DIVIDE VOICE ACROSS IMAGES
+        // ======================================
+
+        const each =
+            voiceLength / images.length;
+
+        sceneDurations =
+            Array(images.length).fill(each);
+
+    } else {
+
+        // ======================================
+        // NO VOICE
+        // USE DEFAULT DURATION
+        // ======================================
+
+        sceneDurations =
+            Array(images.length).fill(
+                duration
+            );
+
+    }
+
+    console.log(
+        "Scene durations:",
+        sceneDurations
+    );
+
+    // ======================================
+    // BUILD CONCAT LIST
+    // ======================================
+
+    images.forEach((image, i) => {
+
+        list +=
+            `file '${image}'\n`;
+
+        list +=
+            `duration ${sceneDurations[i]}\n`;
+
+    });
+
+    // ======================================
+    // REPEAT LAST IMAGE
+    // REQUIRED BY CONCAT DEMUXER
+    // ======================================
+
+    list +=
+        `file '${images[images.length - 1]}'\n`;
+
+    // ======================================
+    // SAVE LIST FILE
+    // ======================================
+
+    await fs.writeFile(
+        listFile,
+        list,
+        "utf8"
+    );
+
+    console.log(
+        "FFmpeg image list created:",
+        listFile
+    );
