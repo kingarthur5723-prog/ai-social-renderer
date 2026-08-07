@@ -518,3 +518,79 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         );
 
     }
+    // ======================================
+    // OUTPUT / QUALITY SETTINGS
+    // ======================================
+
+    command.push(
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "faster",
+
+        "-crf",
+        "17",
+
+        "-profile:v",
+        "high",
+
+        "-level",
+        "4.2",
+
+        "-g",
+        "60",
+
+        "-bf",
+        "2",
+
+        "-maxrate",
+        "8M",
+
+        "-bufsize",
+        "16M",
+
+        "-pix_fmt",
+        "yuv420p",
+
+        "-c:a",
+        "aac",
+
+        "-af",
+        "loudnorm",
+
+        "-b:a",
+        "320k",
+
+        "-shortest",
+
+        "-movflags",
+        "+faststart",
+
+        "-threads",
+        "0",
+
+        `"${outputFile}"`
+    );
+
+    // ======================================
+    // CREATE FINAL COMMAND
+    // ======================================
+
+    const cmd =
+        command.join(" ");
+
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "FINAL FFMPEG COMMAND:"
+    );
+
+    console.log(cmd);
+
+    console.log(
+        "===================================="
+    );
