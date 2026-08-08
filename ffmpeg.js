@@ -427,32 +427,29 @@ const subtitlePath =
         .replace(/:/g, "\\:")
         .replace(/'/g, "\\'");
 
-    // ======================================
-    // VIDEO FILTER
-    // ======================================
-
     const videoFilter =
-        [
-            "scale=1350:2400:force_original_aspect_ratio=increase",
+`scale=1350:2400:force_original_aspect_ratio=increase,` +
+`crop=1080:1920,` +
+`zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30,` +
+`eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,` +
+`unsharp=5:5:1.2:5:5:0,` +
+`ass='${subtitlePath}'`;
 
-            "crop=1080:1920",
-
-            `zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30`,
-
-            "eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05",
-
-            "unsharp=5:5:1.2:5:5:0",
-
-            `ass='${subtitlePath}'`
-
-   // ======================================
-   // ADD VIDEO FILTER
-   // ======================================
-
-              args.push(
-                "-vf",
-              videoFilter
+command.push(
+    "-vf",
+    `"${videoFilter}"`
 );
+
+].join(",");
+
+// ======================================
+// ADD VIDEO FILTER
+// ======================================
+
+args.push(
+    "-vf",
+    videoFilter
+);        
 
     // ======================================
     // AUDIO MIXING
