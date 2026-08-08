@@ -1,6 +1,7 @@
 const fs = require("fs-extra");
 const path = require("path");
 const { v4: uuid } = require("uuid");
+const { exec } = require("child_process");
 
 const generateVoice = require("./voice");
 
@@ -10,7 +11,252 @@ const {
 } = require("./ffmpeg");
 
 const outputDir = path.join(__dirname, "output");
+const voiceDir = path.join(__dirname, "voices");
 
+// ======================================
+// RUN COMMAND
+// ======================================
+
+function runCommand(command) {
+
+    console.log("================================");
+    console.log("Running command:");
+    console.log(command);
+    console.log("================================");
+
+    return new Promise((resolve, reject) => {
+
+        const child = exec(
+            command,
+            {
+                shell: true,
+                maxBuffer: 10 * 1024 * 1024
+            }
+        );
+
+        child.stdout.on("data", data => {
+            console.log(data.toString());
+        });
+
+        child.stderr.on("data", data => {
+            console.log(data.toString());
+        });
+
+        child.on("error", error => {
+            reject(error);
+        });
+
+        child.on("close", code => {
+
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(
+                    new Error(
+                        `Command failed with code ${code}`
+                    )
+                );
+            }
+
+        });
+
+    });
+
+}
+
+// ======================================
+// CREATE SYNCHRONIZED VOICE
+// ======================================
+
+async function createSynchronizedVoice({
+    captions,
+    duration,
+    jobId
+}) {
+
+    if (
+        !Array.isArray(captions) ||
+        captions.length === 0
+    ) {
+
+        return "";
+
+    }
+
+    await fs.ensureDir(voiceDir);
+
+    const jobVoiceDir =
+        path.join(
+            voiceDir,
+            jobId
+        );
+
+    await fs.ensureDir(jobVoiceDir);
+
+    const sceneFiles = [];
+
+    // ======================================
+    // GENERATE ONE VOICE FILE PER SCENE
+    // ======================================
+
+    for (
+        let i = 0;
+        i < captions.length;
+        i++
+    ) {
+
+        const text =
+            String(captions[i] || "").trim();
+
+        if (!text) {
+            continue;
+        }
+
+        console.log(
+            `Generating voice ${i + 1}/${captions.length}...`
+        );
+
+        const sceneId =
+            `${jobId}_scene_${i + 1}`;
+
+        const voiceFile =
+            await generateVoice(
+                text,
+                sceneId
+            );
+
+        console.log(
+            "Scene voice:",
+            voiceFile
+        );
+
+        sceneFiles.push({
+            file: voiceFile,
+            index: i
+        });
+
+    }
+
+    if (sceneFiles.length === 0) {
+
+        return "";
+
+    }
+
+    // ======================================
+    // CREATE PADDED SCENE AUDIO FILES
+    // ======================================
+
+    const paddedFiles = [];
+
+    for (
+        const scene of sceneFiles
+    ) {
+
+        const paddedFile =
+            path.join(
+                jobVoiceDir,
+                `scene_${scene.index + 1}_padded.mp3`
+            );
+
+        const input =
+            scene.file
+                .replace(/\\/g, "/")
+                .replace(/:/g, "\\:");
+
+        const output =
+            paddedFile
+                .replace(/\\/g, "/")
+                .replace(/:/g, "\\:");
+
+        // Keep each voice clip exactly
+        // the duration of its scene.
+        //
+        // If voice is shorter:
+        // silence is added.
+        //
+        // If voice is longer:
+        // it is trimmed.
+
+        const command =
+            `ffmpeg -y -i "${input}" ` +
+            `-af "apad=pad_dur=${duration},atrim=duration=${duration}" ` +
+            `-ar 44100 ` +
+            `-ac 2 ` +
+            `-c:a libmp3lame ` +
+            `-b:a 192k ` +
+            `"${output}"`;
+
+        await runCommand(command);
+
+        paddedFiles.push(paddedFile);
+
+    }
+
+    // ======================================
+    // CREATE CONCAT LIST
+    // ======================================
+
+    const concatFile =
+        path.join(
+            jobVoiceDir,
+            "voice_list.txt"
+        );
+
+    let list = "";
+
+    for (
+        const file of paddedFiles
+    ) {
+
+        const safePath =
+            file.replace(/\\/g, "/");
+
+        list +=
+            `file '${safePath}'\n`;
+
+    }
+
+    await fs.writeFile(
+        concatFile,
+        list
+    );
+
+    // ======================================
+    // FINAL SYNCHRONIZED VOICE
+    // ======================================
+
+    const finalVoice =
+        path.join(
+            voiceDir,
+            `${jobId}_synchronized.mp3`
+        );
+
+    const safeConcat =
+        concatFile.replace(/\\/g, "/");
+
+    const safeFinal =
+        finalVoice.replace(/\\/g, "/");
+
+    const concatCommand =
+        `ffmpeg -y ` +
+        `-f concat ` +
+        `-safe 0 ` +
+        `-i "${safeConcat}" ` +
+        `-c:a libmp3lame ` +
+        `-b:a 192k ` +
+        `"${safeFinal}"`;
+
+    await runCommand(concatCommand);
+
+    console.log(
+        "Synchronized voice created:",
+        finalVoice
+    );
+
+    return finalVoice;
+
+}
 
 // ======================================
 // RENDER VIDEO
@@ -20,24 +266,42 @@ async function renderVideo(data) {
 
     let downloadedImages = [];
 
+    let synchronizedVoice = "";
+
     try {
 
-        const images = data.images || [];
-        const captions = data.captions || [];
+        const images =
+            data.images || [];
+
+        const captions =
+            data.captions || [];
 
         // ======================================
         // VALIDATE IMAGES
         // ======================================
 
-        if (!Array.isArray(images) || images.length === 0) {
+        if (
+            !Array.isArray(images) ||
+            images.length === 0
+        ) {
 
-            throw new Error("No images supplied.");
+            throw new Error(
+                "No images supplied."
+            );
 
         }
 
-        console.log("================================");
-        console.log("AI SOCIAL RENDERER");
-        console.log("================================");
+        console.log(
+            "================================"
+        );
+
+        console.log(
+            "AI SOCIAL RENDERER"
+        );
+
+        console.log(
+            "================================"
+        );
 
         console.log(
             "Images received:",
@@ -76,7 +340,9 @@ async function renderVideo(data) {
         // OUTPUT DIRECTORY
         // ======================================
 
-        await fs.ensureDir(outputDir);
+        await fs.ensureDir(
+            outputDir
+        );
 
         // ======================================
         // MUSIC
@@ -108,17 +374,21 @@ async function renderVideo(data) {
                 );
 
             if (
-                await fs.pathExists(requestedPath)
+                await fs.pathExists(
+                    requestedPath
+                )
             ) {
 
-                music = requestedPath;
+                music =
+                    requestedPath;
 
             }
 
         }
 
-        // If no music was supplied,
-        // choose a random built-in track.
+        // ======================================
+        // RANDOM MUSIC
+        // ======================================
 
         if (!music) {
 
@@ -143,7 +413,8 @@ async function renderVideo(data) {
                 )
             ) {
 
-                music = randomMusicPath;
+                music =
+                    randomMusicPath;
 
             }
 
@@ -175,17 +446,26 @@ async function renderVideo(data) {
         ) {
 
             console.log(
-                "Generating AI voice..."
+                "Generating synchronized AI voice..."
             );
 
+            synchronizedVoice =
+                await createSynchronizedVoice({
+
+                    captions,
+
+                    duration:
+                        durationPerScene,
+
+                    jobId: id
+
+                });
+
             voice =
-                await generateVoice(
-                    data.voice,
-                    id
-                );
+                synchronizedVoice;
 
             console.log(
-                "Generated voice file:",
+                "Synchronized voice:",
                 voice
             );
 
@@ -200,7 +480,10 @@ async function renderVideo(data) {
         );
 
         downloadedImages =
-            await downloadImages(images, id);
+            await downloadImages(
+                images,
+                id
+            );
 
         console.log(
             "Downloaded images:",
@@ -240,19 +523,24 @@ async function renderVideo(data) {
 
         await createVideo({
 
-            images: downloadedImages,
+            images:
+                downloadedImages,
 
             captions,
 
             music,
 
-            narration: voice,
+            narration:
+                voice,
 
-            outputFile: outputVideo,
+            outputFile:
+                outputVideo,
 
-            duration: durationPerScene,
+            duration:
+                durationPerScene,
 
-            jobId: id
+            jobId:
+                id
 
         });
 
@@ -264,7 +552,9 @@ async function renderVideo(data) {
             const file of downloadedImages
         ) {
 
-            await fs.remove(file);
+            await fs.remove(
+                file
+            );
 
         }
 
@@ -330,7 +620,8 @@ async function renderVideo(data) {
 
             ],
 
-            status: "ready"
+            status:
+                "ready"
 
         };
 
@@ -354,8 +645,9 @@ async function renderVideo(data) {
             "================================"
         );
 
-        // Clean temporary images
-        // if something failed.
+        // ======================================
+        // CLEAN TEMP IMAGES
+        // ======================================
 
         for (
             const file of downloadedImages
@@ -363,7 +655,9 @@ async function renderVideo(data) {
 
             try {
 
-                await fs.remove(file);
+                await fs.remove(
+                    file
+                );
 
             }
 
@@ -382,14 +676,14 @@ async function renderVideo(data) {
 
             success: false,
 
-            error: error.message
+            error:
+                error.message
 
         };
 
     }
 
 }
-
 
 // ======================================
 // DELETE OLD VIDEOS
@@ -464,9 +758,9 @@ setInterval(
     3600000
 );
 
-
 // ======================================
 // EXPORT
 // ======================================
 
-module.exports = renderVideo;
+module.exports =
+    renderVideo;
