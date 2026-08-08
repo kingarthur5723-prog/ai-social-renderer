@@ -417,14 +417,15 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         motion
     );
 
-    // ======================================
-    // SUBTITLE PATH
-    // ======================================
+  // ======================================
+  // SUBTITLE PATH
+  // ======================================
 
-    const subtitlePath =
-        subtitleFile
-            .replace(/\\/g, "/")
-            .replace(/:/g, "\\:");
+const subtitlePath =
+    subtitleFile
+        .replace(/\\/g, "/")
+        .replace(/:/g, "\\:")
+        .replace(/'/g, "\\'");
 
     // ======================================
     // VIDEO FILTER
