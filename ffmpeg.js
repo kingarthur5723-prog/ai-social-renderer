@@ -439,6 +439,11 @@ const videoFilter =
     `unsharp=5:5:1.2:5:5:0,` +
     `ass='${subtitlePath}'`;
 
+args.push(
+    "-vf",
+    videoFilter
+);
+
 // ======================================
 // ADD VIDEO FILTER
 // ======================================
