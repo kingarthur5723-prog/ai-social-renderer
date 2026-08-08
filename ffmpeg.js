@@ -444,16 +444,15 @@ const subtitlePath =
             "unsharp=5:5:1.2:5:5:0",
 
             `ass='${subtitlePath}'`
-        ].join(",");
 
-    // ======================================
-    // ADD VIDEO FILTER
-    // ======================================
+   // ======================================
+   // ADD VIDEO FILTER
+   // ======================================
 
-    command.push(
-        "-vf",
-        videoFilter
-    );
+              args.push(
+                "-vf",
+              videoFilter
+);
 
     // ======================================
     // AUDIO MIXING
