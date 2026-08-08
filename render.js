@@ -200,7 +200,7 @@ async function renderVideo(data) {
         );
 
         downloadedImages =
-            await downloadImages(images);
+            await downloadImages(images, id);
 
         console.log(
             "Downloaded images:",
@@ -250,7 +250,9 @@ async function renderVideo(data) {
 
             outputFile: outputVideo,
 
-            duration: durationPerScene
+            duration: durationPerScene,
+
+            jobId: id
 
         });
 
