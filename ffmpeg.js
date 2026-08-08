@@ -1,8 +1,7 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { exec, spawn } = require("child_process");
-const { v4: uuid } = require("uuid");
+const { execFile } = require("child_process");
 
 // ======================================
 // DOWNLOAD IMAGES
@@ -10,13 +9,7 @@ const { v4: uuid } = require("uuid");
 
 async function downloadImages(images) {
 
-    const jobId = uuid();
-
-    const uploadDir = path.join(
-        __dirname,
-        "uploads",
-        jobId
-    );
+    const uploadDir = path.join(__dirname, "uploads");
 
     await fs.ensureDir(uploadDir);
 
@@ -24,12 +17,12 @@ async function downloadImages(images) {
 
     for (let i = 0; i < images.length; i++) {
 
-        const file = path.join(
+        console.log(`Downloading image ${i + 1}/${images.length}`);
+
+        const filename = path.join(
             uploadDir,
             `image_${i}.jpg`
         );
-
-        console.log("Downloading:", images[i]);
 
         const response = await axios({
             url: images[i],
@@ -39,7 +32,7 @@ async function downloadImages(images) {
 
         await new Promise((resolve, reject) => {
 
-            const writer = fs.createWriteStream(file);
+            const writer = fs.createWriteStream(filename);
 
             response.data.pipe(writer);
 
@@ -49,14 +42,13 @@ async function downloadImages(images) {
 
         });
 
-        files.push(file);
+        files.push(filename);
 
     }
 
-    console.log("Downloaded:", files);
-
     return files;
 }
+
 
 // ======================================
 // CREATE VIDEO
@@ -71,11 +63,9 @@ async function createVideo({
     duration = 5
 }) {
 
-    // ======================================
-    // JOB FILES
-    // ======================================
+    const uploadDir = path.join(__dirname, "uploads");
 
-    const uploadDir = path.dirname(images[0]);
+    await fs.ensureDir(uploadDir);
 
     const listFile = path.join(
         uploadDir,
@@ -84,227 +74,83 @@ async function createVideo({
 
     const subtitleFile = path.join(
         uploadDir,
-        "captions.ass"
+        "captions.srt"
     );
 
     // ======================================
-    // CREATE ASS SUBTITLES
+    // VALIDATE IMAGES
     // ======================================
 
-    let ass = `[Script Info]
-ScriptType: v4.00+
-
-[V4+ Styles]
-Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Arial,18,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,2,50,50,120,1
-
-[Events]
-Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
-`;
-
-    // ======================================
-    // ASS TIME FORMAT
-    // ======================================
-
-    function assTime(sec) {
-
-        const h = String(
-            Math.floor(sec / 3600)
-        ).padStart(1, "0");
-
-        const m = String(
-            Math.floor((sec % 3600) / 60)
-        ).padStart(2, "0");
-
-        const s = (
-            sec % 60
-        ).toFixed(2).padStart(5, "0");
-
-        return `${h}:${m}:${s}`;
+    if (!images || images.length === 0) {
+        throw new Error("No images supplied.");
     }
 
+    console.log("Images:", images.length);
+
     // ======================================
-    // ADD CAPTIONS
+    // CREATE SUBTITLE FILE
     // ======================================
 
-    captions.forEach((caption, i) => {
+    let srt = "";
 
-        const start = i * duration;
+    function formatTime(seconds) {
 
-        const end = (i + 1) * duration;
+        const hrs = String(
+            Math.floor(seconds / 3600)
+        ).padStart(2, "0");
 
-        // Protect ASS special characters
-        const safeCaption = String(caption)
-            .replace(/\\/g, "\\\\")
-            .replace(/\{/g, "\\{")
-            .replace(/\}/g, "\\}");
+        const mins = String(
+            Math.floor((seconds % 3600) / 60)
+        ).padStart(2, "0");
 
-        ass +=
-            `Dialogue: 0,${assTime(start)},${assTime(end)},Default,,0,0,0,,{\\fad(250,250)}${safeCaption}\n`;
+        const secs = String(
+            Math.floor(seconds % 60)
+        ).padStart(2, "0");
+
+        return `${hrs}:${mins}:${secs},000`;
+    }
+
+    captions.forEach((caption, index) => {
+
+        const start = index * duration;
+        const end = (index + 1) * duration;
+
+        srt += `${index + 1}\n`;
+        srt += `${formatTime(start)} --> ${formatTime(end)}\n`;
+        srt += `${caption}\n\n`;
 
     });
 
-    // ======================================
-    // SAVE SUBTITLE FILE
-    // ======================================
-
     await fs.writeFile(
         subtitleFile,
-        ass,
+        srt,
         "utf8"
     );
 
-    console.log(
-        "Subtitle file created:",
-        subtitleFile
-    );
-
-    // ======================================
-    // CHECK AUDIO
-    // ======================================
-
-    const hasVoice =
-        Boolean(narration) &&
-        await fs.pathExists(narration);
-
-    const hasMusic =
-        Boolean(music) &&
-        await fs.pathExists(music);
-
-    console.log(
-        "Voice:",
-        hasVoice
-    );
-
-    console.log(
-        "Music:",
-        hasMusic
-    );
-    
     // ======================================
     // CREATE IMAGE LIST
     // ======================================
 
     let list = "";
 
-    let sceneDurations = [];
+    images.forEach(image => {
 
-    // ======================================
-    // GET VOICE DURATION
-    // ======================================
+        const safeImage = image
+            .replace(/\\/g, "/")
+            .replace(/'/g, "'\\''");
 
-    if (hasVoice) {
-
-        const ffprobe =
-            process.env.FFPROBE_PATH || "ffprobe";
-
-        console.log(
-            "Getting voice duration..."
-        );
-
-        const voiceLength =
-            await new Promise((resolve, reject) => {
-
-                exec(
-                    `${ffprobe} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${narration}"`,
-                    (err, stdout, stderr) => {
-
-                        if (err) {
-
-                            console.error(
-                                "FFprobe error:",
-                                stderr
-                            );
-
-                            return reject(err);
-                        }
-
-                        const durationValue =
-                            parseFloat(stdout);
-
-                        if (
-                            !Number.isFinite(
-                                durationValue
-                            )
-                        ) {
-
-                            return reject(
-                                new Error(
-                                    "Could not determine voice duration"
-                                )
-                            );
-
-                        }
-
-                        resolve(
-                            durationValue
-                        );
-
-                    }
-                );
-
-            });
-
-        console.log(
-            "Voice duration:",
-            voiceLength,
-            "seconds"
-        );
-
-        // ======================================
-        // DIVIDE VOICE ACROSS IMAGES
-        // ======================================
-
-        const each =
-            voiceLength / images.length;
-
-        sceneDurations =
-            Array(images.length).fill(each);
-
-    } else {
-
-        // ======================================
-        // NO VOICE
-        // USE DEFAULT DURATION
-        // ======================================
-
-        sceneDurations =
-            Array(images.length).fill(
-                duration
-            );
-
-    }
-
-    console.log(
-        "Scene durations:",
-        sceneDurations
-    );
-
-    // ======================================
-    // BUILD CONCAT LIST
-    // ======================================
-
-    images.forEach((image, i) => {
-
-        list +=
-            `file '${image}'\n`;
-
-        list +=
-            `duration ${sceneDurations[i]}\n`;
+        list += `file '${safeImage}'\n`;
+        list += `duration ${duration}\n`;
 
     });
 
-    // ======================================
-    // REPEAT LAST IMAGE
-    // REQUIRED BY CONCAT DEMUXER
-    // ======================================
+    // Repeat final image so concat honors
+    // the final duration.
+    const lastImage = images[images.length - 1]
+        .replace(/\\/g, "/")
+        .replace(/'/g, "'\\''");
 
-    list +=
-        `file '${images[images.length - 1]}'\n`;
-
-    // ======================================
-    // SAVE LIST FILE
-    // ======================================
+    list += `file '${lastImage}'\n`;
 
     await fs.writeFile(
         listFile,
@@ -312,20 +158,59 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         "utf8"
     );
 
-    console.log(
-        "FFmpeg image list created:",
-        listFile
-    );
-
     // ======================================
-    // BUILD FFMPEG COMMAND
+    // CHECK AUDIO
     // ======================================
 
-    const ffmpeg =
-        process.env.FFMPEG_PATH || "ffmpeg";
+    const hasVoice =
+        narration &&
+        await fs.pathExists(narration);
 
-    let command = [
-        ffmpeg,
+    const hasMusic =
+        music &&
+        await fs.pathExists(music);
+
+    console.log("Voice:", hasVoice);
+    console.log("Music:", hasMusic);
+
+    // ======================================
+    // SUBTITLE PATH
+    // ======================================
+
+    let subtitlePath = subtitleFile
+        .replace(/\\/g, "/");
+
+    // Escape characters required by FFmpeg
+    subtitlePath = subtitlePath
+        .replace(/:/g, "\\:")
+        .replace(/'/g, "\\'");
+
+    // ======================================
+    // VIDEO FILTER
+    // ======================================
+
+    const videoFilter =
+        "scale=1080:1920:force_original_aspect_ratio=increase," +
+        "crop=1080:1920," +
+        "zoompan=" +
+        "z='min(zoom+0.00010,1.03)':" +
+        "x='iw/2-(iw/zoom/2)':" +
+        "y='ih/2-(ih/zoom/2)':" +
+        "d=120:" +
+        "s=1080x1920:" +
+        "fps=24," +
+        "eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05," +
+        "unsharp=5:5:1.2:5:5:0," +
+        `subtitles='${subtitlePath}'`;
+
+    console.log("Video filter:");
+    console.log(videoFilter);
+
+    // ======================================
+    // BUILD FFMPEG ARGUMENTS
+    // ======================================
+
+    const args = [
         "-y",
 
         "-f",
@@ -339,128 +224,39 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
     ];
 
     // ======================================
-    // ADD VOICE INPUT
+    // VOICE INPUT
     // ======================================
 
     if (hasVoice) {
 
-        command.push(
+        args.push(
             "-i",
-           narration
+            narration
         );
 
     }
 
     // ======================================
-    // ADD MUSIC INPUT
+    // MUSIC INPUT
     // ======================================
 
     if (hasMusic) {
 
-        command.push(
-            "-stream_loop",
-            "-1",
-
+        args.push(
             "-i",
-             music
+            music
         );
 
     }
 
     // ======================================
-    // CINEMATIC MOTIONS
+    // VIDEO FILTER
     // ======================================
 
-    const motions = [
-
-        {
-            zoom: "min(zoom+0.00060,1.18)",
-            x: "iw/2-(iw/zoom/2)",
-            y: "ih/2-(ih/zoom/2)"
-        },
-
-        {
-            zoom: "min(zoom+0.00045,1.15)",
-            x: "iw/2-(iw/zoom/2)-120+on*2",
-            y: "ih/2-(ih/zoom/2)"
-        },
-
-        {
-            zoom: "min(zoom+0.00045,1.15)",
-            x: "iw/2-(iw/zoom/2)+120-on*2",
-            y: "ih/2-(ih/zoom/2)"
-        },
-
-        {
-            zoom: "min(zoom+0.00050,1.20)",
-            x: "iw/2-(iw/zoom/2)",
-            y: "ih/2-(ih/zoom/2)-100+on*1.8"
-        },
-
-        {
-            zoom: "min(zoom+0.00050,1.20)",
-            x: "iw/2-(iw/zoom/2)",
-            y: "ih/2-(ih/zoom/2)+100-on*1.8"
-        }
-
-    ];
-
-    const motion =
-        motions[
-            Math.floor(
-                Math.random() * motions.length
-            )
-        ];
-
-    console.log(
-        "Selected motion:",
-        motion
+    args.push(
+        "-vf",
+        videoFilter
     );
-
-  // ======================================
-  // SUBTITLE PATH
-  // ======================================
-
-const subtitlePath =
-    subtitleFile
-        .replace(/\\/g, "/")
-        .replace(/:/g, "\\:")
-        .replace(/'/g, "\\'");
-
- // ======================================
-// VIDEO FILTER
-// ======================================
-
-const videoFilter =
-    `scale=1350:2400:force_original_aspect_ratio=increase,` +
-    `crop=1080:1920,` +
-    `zoompan=z='${motion.zoom}':x='${motion.x}':y='${motion.y}':d=120:s=1080x1920:fps=30,` +
-    `eq=contrast=1.08:brightness=0.03:saturation=1.18:gamma=1.05,` +
-    `unsharp=5:5:1.2:5:5:0,` +
-    `ass='${subtitlePath}'`;
-
-args.push(
-    "-vf",
-    videoFilter
-);
-
-// ======================================
-// ADD VIDEO FILTER
-// ======================================
-
-args.push(
-    "-vf",
-    videoFilter
-);   
-
-// ======================================
-// ADD VIDEO FILTER
-// ======================================
-
-args.push(
-    "-vf",
-    videoFilter
-);        
 
     // ======================================
     // AUDIO MIXING
@@ -468,31 +264,28 @@ args.push(
 
     if (hasVoice && hasMusic) {
 
-        const audioFilter =
-            "[1:a]volume=1[narration];" +
-            "[2:a]volume=0.08[music];" +
-            "[narration][music]" +
-            "amix=inputs=2:" +
-            "duration=first:" +
-            "dropout_transition=2" +
-            "[audio]";
+        args.push(
 
-        command.push(
             "-filter_complex",
-            audioFilter,
+
+            "[1:a]volume=1[narration];" +
+            "[2:a]volume=0.15[music];" +
+            "[narration][music]" +
+            "amix=inputs=2:duration=longest:dropout_transition=2[audio]",
 
             "-map",
             "0:v",
 
             "-map",
             "[audio]"
+
         );
 
     }
 
     else if (hasVoice) {
 
-        command.push(
+        args.push(
 
             "-map",
             "0:v",
@@ -506,7 +299,7 @@ args.push(
 
     else if (hasMusic) {
 
-        command.push(
+        args.push(
 
             "-map",
             "0:v",
@@ -520,45 +313,27 @@ args.push(
 
     else {
 
-        command.push(
+        args.push(
             "-map",
             "0:v"
         );
 
     }
-    
+
     // ======================================
-    // OUTPUT / QUALITY SETTINGS
+    // OUTPUT SETTINGS
     // ======================================
 
-    command.push(
+    args.push(
 
         "-c:v",
         "libx264",
 
         "-preset",
-        "faster",
+        "medium",
 
         "-crf",
-        "17",
-
-        "-profile:v",
-        "high",
-
-        "-level",
-        "4.2",
-
-        "-g",
-        "60",
-
-        "-bf",
-        "2",
-
-        "-maxrate",
-        "8M",
-
-        "-bufsize",
-        "16M",
+        "20",
 
         "-pix_fmt",
         "yuv420p",
@@ -566,144 +341,148 @@ args.push(
         "-c:a",
         "aac",
 
-        "-af",
-        "loudnorm",
-
         "-b:a",
-        "320k",
-
-        "-shortest",
+        "192k",
 
         "-movflags",
         "+faststart",
 
-        "-threads",
-        "0",
+        outputFile
 
-       outputFile
     );
 
     // ======================================
-    // CREATE FINAL COMMAND
+    // LOG COMMAND
     // ======================================
 
-    const cmd =
-        command.join(" ");
+    console.log("================================");
+    console.log("FFMPEG STARTING");
+    console.log("================================");
 
     console.log(
-        "===================================="
+        "ffmpeg " +
+        args
+            .map(arg => `"${arg}"`)
+            .join(" ")
     );
 
-    console.log(
-        "FINAL FFMPEG COMMAND:"
-    );
-
-    console.log(cmd);
-
-    console.log(
-        "===================================="
-    );
+    console.log("================================");
 
     // ======================================
-// RUN FFMPEG SAFELY
-// ======================================
+    // RUN FFMPEG
+    // ======================================
 
-return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
 
-    console.log("Starting FFmpeg render...");
-
-    const args = command.slice(1);
-
-    console.log("FFmpeg executable:", ffmpeg);
-    console.log("FFmpeg arguments:", args);
-
-    const child = require("child_process").spawn(
-        ffmpeg,
-        args,
-        {
-            stdio: ["ignore", "pipe", "pipe"]
-        }
-    );
-
-    let stderr = "";
-
-    child.stdout.on("data", data => {
-
-        console.log(
-            data.toString()
+        const child = execFile(
+            "ffmpeg",
+            args,
+            {
+                windowsHide: true,
+                maxBuffer: 20 * 1024 * 1024
+            }
         );
 
-    });
+        let stderr = "";
+        let stdout = "";
 
-    child.stderr.on("data", data => {
+        child.stdout.on(
+            "data",
+            data => {
 
-        const output =
-            data.toString();
+                const text = data.toString();
 
-        stderr += output;
+                stdout += text;
 
-        console.log(output);
+                console.log(text);
 
-    });
-
-    child.on("error", error => {
-
-        console.error(
-            "FFmpeg process error:",
-            error
+            }
         );
 
-        reject(error);
+        child.stderr.on(
+            "data",
+            data => {
 
-    });
+                const text = data.toString();
 
-    child.on("close", code => {
+                stderr += text;
 
-        console.log(
-            "FFmpeg exited with code:",
-            code
+                console.log(text);
+
+            }
         );
 
-        if (code === 0) {
+        child.on(
+            "error",
+            err => {
 
-            console.log(
-                "Video rendered successfully:"
-            );
+                console.error(
+                    "Failed to start FFmpeg:",
+                    err
+                );
 
-            console.log(
-                outputFile
-            );
+                reject(err);
 
-            resolve(outputFile);
+            }
+        );
 
-        } else {
+        child.on(
+            "close",
+            code => {
 
-            console.error(
-                "FFmpeg render failed."
-            );
-
-            console.error(
-                stderr
-            );
-
-            reject(
-                new Error(
-                    "FFmpeg failed with exit code " +
+                console.log(
+                    "FFmpeg exit code:",
                     code
-                )
-            );
+                );
 
-        }
+                if (code === 0) {
+
+                    resolve(outputFile);
+
+                }
+
+                else {
+
+                    console.error(
+                        "================================"
+                    );
+
+                    console.error(
+                        "FFMPEG FAILED"
+                    );
+
+                    console.error(
+                        stderr
+                    );
+
+                    console.error(
+                        "================================"
+                    );
+
+                    reject(
+                        new Error(
+                            `FFmpeg exited with code ${code}`
+                        )
+                    );
+
+                }
+
+            }
+        );
 
     });
 
-});
+}
+
 
 // ======================================
 // EXPORTS
 // ======================================
 
 module.exports = {
+
     downloadImages,
+
     createVideo
+
 };
