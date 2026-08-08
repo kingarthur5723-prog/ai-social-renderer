@@ -1,7 +1,7 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const { v4: uuid } = require("uuid");
 
 // ======================================
@@ -597,77 +597,99 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
     );
 
     // ======================================
-    // RUN FFMPEG
-    // ======================================
+// RUN FFMPEG SAFELY
+// ======================================
 
-    return new Promise((resolve, reject) => {
+return new Promise((resolve, reject) => {
 
-        console.log("Starting FFmpeg render...");
+    console.log("Starting FFmpeg render...");
 
-        const child = exec(cmd);
+    const args = command.slice(1);
 
-        child.stdout.on("data", data => {
+    console.log("FFmpeg executable:", ffmpeg);
+    console.log("FFmpeg arguments:", args);
 
-            console.log(
-                data.toString()
-            );
+    const child = require("child_process").spawn(
+        ffmpeg,
+        args,
+        {
+            stdio: ["ignore", "pipe", "pipe"]
+        }
+    );
 
-        });
+    let stderr = "";
 
-        child.stderr.on("data", data => {
+    child.stdout.on("data", data => {
 
-            console.log(
-                data.toString()
-            );
-
-        });
-
-        child.on("error", error => {
-
-            console.error(
-                "FFmpeg process error:",
-                error
-            );
-
-            reject(error);
-
-        });
-
-        child.on("close", code => {
-
-            console.log(
-                "FFmpeg exited with code:",
-                code
-            );
-
-            if (code === 0) {
-
-                console.log(
-                    "Video rendered successfully:"
-                );
-
-                console.log(
-                    outputFile
-                );
-
-                resolve(outputFile);
-
-            } else {
-
-                reject(
-                    new Error(
-                        "FFmpeg failed with exit code " +
-                        code
-                    )
-                );
-
-            }
-
-        });
+        console.log(
+            data.toString()
+        );
 
     });
 
-}
+    child.stderr.on("data", data => {
+
+        const output =
+            data.toString();
+
+        stderr += output;
+
+        console.log(output);
+
+    });
+
+    child.on("error", error => {
+
+        console.error(
+            "FFmpeg process error:",
+            error
+        );
+
+        reject(error);
+
+    });
+
+    child.on("close", code => {
+
+        console.log(
+            "FFmpeg exited with code:",
+            code
+        );
+
+        if (code === 0) {
+
+            console.log(
+                "Video rendered successfully:"
+            );
+
+            console.log(
+                outputFile
+            );
+
+            resolve(outputFile);
+
+        } else {
+
+            console.error(
+                "FFmpeg render failed."
+            );
+
+            console.error(
+                stderr
+            );
+
+            reject(
+                new Error(
+                    "FFmpeg failed with exit code " +
+                    code
+                )
+            );
+
+        }
+
+    });
+
+});
 
 // ======================================
 // EXPORTS
