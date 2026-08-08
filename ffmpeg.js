@@ -335,7 +335,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         "0",
 
         "-i",
-        `"${listFile}"`
+        listFile
     ];
 
     // ======================================
@@ -346,7 +346,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 
         command.push(
             "-i",
-            `"${narration}"`
+           narration
         );
 
     }
@@ -362,7 +362,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
             "-1",
 
             "-i",
-            `"${music}"`
+             music
         );
 
     }
@@ -451,7 +451,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 
     command.push(
         "-vf",
-        `"${videoFilter}"`
+        videoFilter
     );
 
     // ======================================
@@ -471,7 +471,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 
         command.push(
             "-filter_complex",
-            `"${audioFilter}"`,
+            audioFilter,
 
             "-map",
             "0:v",
@@ -572,7 +572,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         "-threads",
         "0",
 
-        `"${outputFile}"`
+       outputFile
     );
 
     // ======================================
